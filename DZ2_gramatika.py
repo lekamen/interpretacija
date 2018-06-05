@@ -1,8 +1,8 @@
 # GRAMATIKA (puna)
-# identifier    -> [A-Za-z_][A-Za-z0-9_]*
-# broj          -> decimalni | heksadekadski
-# decimalni     -> 0 | [1-9][0-9]*
-# heksadekadski -> 0[xX][0-9a-fA-F]+
+# identifier    -> [A-Za-z_][A-Za-z0-9_]* LEX
+# broj          -> decimalni | heksadekadski LEX
+# decimalni     -> 0 | [1-9][0-9]* LEX
+# heksadekadski -> 0[xX][0-9a-fA-F]+ LEX
 # string        -> "schar*"
 # char          -> 'cchar'
 # library       -> <lchar*>
@@ -11,9 +11,9 @@
 # nchar         -> (normalni znak osim ")
 # lchar         -> (normalni znak osim >)
 # escape        -> \n | \t | \v | \b | \r | \f | \a |
-#                  \\ | \' | \"
+#                  \\ | \' | \" LEX
 # separator     -> ( | ) | [ | ] | { | } | , | ;
-# unarni_op     -> ! | ~ | - | *
+# unarni_op     -> ! | ~ | - | * LEX
 # binarni_op    -> . | -> | * | / | % | + | - | << | >> |
 #                  < | <= | >= | > | == | != | & | ^ | | |
 #                  && | || | ? | :

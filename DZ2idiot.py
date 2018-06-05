@@ -28,15 +28,15 @@ import re
 
 class Tokeni(enum.Enum):
     #separatori
-    OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ, DVOTOCKA = '()[]{},;'
+    OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ, SEP = '()[]{},;'
     #unarni operatori
     USKL, TILDA, MINUS, ZVJ = '!~-*'
     #binarni operatori bez zvjezdice!!!
-    TOCKA, STRELICA, SLASH, MOD, PLUS, MINUS, LSHIFT, RSHIFT = '.', '->', '/', '%', '+', '-', '<<', '>>'
+    TOCKA, STRELICA, SLASH, MOD, PLUS, LSHIFT, RSHIFT = '.', '->', '/', '%', '+', '<<', '>>'
     LESS, LESSEQ, GRTEQ, GRT, EQ, DISEQ, BITAND, BITEXCLOR, BITOR = '<', '<=', '>=', '>', '==', '!=', '&', '^', '|'
     LAND, LOR, CONDQ, CONDDOT = '&&', '||', '?', ':'
     #operatori pridruzivanja bez jednakosti!!!
-    PLUSEQ, MINUSEQ, ZVJEQ, SLASHEQ, MODEQ, LSHIFTEQ, RSHIFTEQ = '+=', '-=', '*=', '/=', '%=', '<<=', '>>='
+    PLUSEQ, MINUSEQ, ZVJEQ, SLASHEQ, MODEQ, LSHIFTEQ, RSHIFTEQ, ASSIGN= '+=', '-=', '*=', '/=', '%=', '<<=', '>>=', '='
     ANDEQ, POTEQ, CRTAEQ = '&=', '^=', '|='
     #postfiksni operatori
     DECR, INCR = '--', '++'

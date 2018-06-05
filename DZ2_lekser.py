@@ -7,13 +7,14 @@ escapeZnakovi = [Tokeni.NRED, Tokeni.NTAB, Tokeni.NVERTTAB, Tokeni.BACKSP, Token
     Tokeni.ALERT, Tokeni.QUOTE, Tokeni.DBLQUOTE, Tokeni.ESCSLASH]
 separatori = [Tokeni.OOTV, Tokeni.OZATV, Tokeni.UOTV, Tokeni.UZATV, Tokeni.VOTV, Tokeni.VZATV,
      Tokeni.ZAREZ, Tokeni.SEP]
+separatoriZnakovi = '()[]{},;'
 
 
-def isxdigit(self, znak):
+def isxdigit(znak):
     """Provjerava je li znak hex znamenka"""
-    return znak.isdigit() or znak in string.hexdigits
+    return znak != '' and (znak.isdigit() or znak in 'ABCDEFabcdef')
 
-def isidentifier(self, znak):
+def isidentifier(znak):
     """Provjerava je li znak nešto što ide u identifier"""
     return znak.isalpha() or znak.isdigit() or znak == '_'
 
@@ -24,47 +25,27 @@ def isNChar(znak):
         return False
     return True
 
-def isSChar(self, znak):
+def isSChar(znak):
     """Provjerava je li znak schar"""
     if (isNChar or znak in escapeZnakovi):
         return True
     return False
 
-def isLChar(self, znak):
+def isLChar(znak):
     """Provjerava je li znak lchar"""
     p = re.compile('^[ -~]$')
     if (p.match(znak) is None or znak == '<'):
         return False
     return True
 
-def getZnakSeparator(znak):
-    for token in separatori:
-        if(token == Tokeni(znak)):
-            return token
-    return None
-           
-
 def Lekser(kôd):
     lex = Tokenizer(kôd)
 
     for znak in iter(lex.čitaj, ''):
-        if znak.isalpha or znak == '_':
-            # onda je identifier
-            lex.plus(isidentifier)
-            yield lex.token(Tokeni.IDENTIFIER)
-        elif znak.isdigit(): 
-            # onda je dec ili hex
-            if znak == '0': 
-                sljedeći = lex.čitaj()
-                if sljedeći == 'x' or sljedeći == 'X':
-                    # onda je hex
-                    lex.plus(isxdigit)
-                    yield lex.token(Tokeni.HEKSADEKADSKI)
-                else: lex.greška('očekujem x ili X')
-            else:
-                # onda je dec
-                lex.zvijezda = lex.token(str.isdigit)
-                yield lex.token(Tokeni.DECIMALNI)
+        print("znak")
+        print(znak)
+        if znak.isspace(): lex.token(E.PRAZNO) #vidi jel radi za enter i tabulator
+        if znak == '': lex.token(E.KRAJ)
         # je li escape sequence?
         elif znak == '\\' :
             sljedeći = lex.čitaj()
@@ -103,7 +84,7 @@ def Lekser(kôd):
             yield lex.token(Tokeni.TILDA)
         # *, *=
         elif znak == '*':
-        sljedeći = lex.pogledaj()
+            sljedeći = lex.pogledaj()
             if sljedeći == '=':
                 lex.čitaj()
                 yield lex.token(Tokeni.ZVJEQ)
@@ -255,8 +236,34 @@ def Lekser(kôd):
             if (kraj == '>'):
                 yield lex.token(Tokeni.LIBLIT)
         #je li znak separator?
-        elif znak in separatori:
-            t = getZnakSeparator(znak)
-            if (t is not None):
-                yield t
-            raise RuntimeError("Neispravan separator")
+        elif znak in separatoriZnakovi:
+            yield Tokeni(znak)
+        elif znak.isalpha() or znak == '_':
+            # onda je identifier
+            lex.plus(isidentifier)
+            yield lex.token(Tokeni.IDENTIFIER)
+        elif znak.isdigit(): 
+            # onda je dec ili hex
+            if znak == '0': 
+                sljedeći = lex.pogledaj()
+                if sljedeći == 'x' or sljedeći == 'X':
+                    # onda je hex
+                    print("koji znak ja saljem ovdje")
+                    print(sljedeći)
+                    lex.čitaj()
+                    lex.plus(isxdigit)
+                    yield lex.token(Tokeni.HEKSADEKADSKI)
+                else:
+                    if(sljedeći.isspace()):
+                        yield lex.token(Tokeni.DECIMALNI)
+                    else:
+                        lex.greška('očekujem x ili X')
+            else:
+                lex.pogledaj()
+                # onda je dec
+                lex.zvijezda(str.isdigit)
+                yield lex.token(Tokeni.DECIMALNI)
+
+if __name__ == '__main__':
+    lista = list(Lekser("1 _nesto0 () ; * -> += -= << >> <<= >>= 0x23"))
+    print (lista)

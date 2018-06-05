@@ -16,15 +16,13 @@ import re
 # identifier    -> [A-Za-z_][A-Za-z0-9_]*    
 # broj          -> decimalni | heksadekadski
 # heksadekadski -> 0[xX][0-9a-fA-F]+
-
-
-
-# library       -> <lchar*>
-# schar         -> nchar | escape
-# cchar         -> nchar | escape | " | \0
 # nchar         -> (normalni znak osim ")
 # lchar         -> (normalni znak osim >)
 
+#sve iznad je u Tokenima, ispod je za lexer
+# library       -> <lchar*>
+# schar         -> nchar | escape
+# cchar         -> nchar | escape | " | \0
 # string        -> "schar*"
 # char          -> 'cchar'
 
@@ -62,15 +60,15 @@ class Tokeni(enum.Enum):
             return hex(self.sadržaj) #isprobati!!
     class NCHAR(Token):
         def vrijednost(self):
-            p = re.compile('^[^"]$')
-            if (p.match(self.sadržaj) is None):
+            p = re.compile('^[ -~]$')
+            if (p.match(self.sadržaj) is None or self.sadržaj == '"'):
                 raise RuntimeError("Neispravan nchar")
             return self.sadržaj #????
     class  LCHAR(Token):
         def vrijednost(self):
-            p = re.compile('^[^>]$')
-            if (p.match(self.sadržaj) is None):
-                raise RuntimeError("Neispravan nchar")
+            p = re.compile('^[ -~]$')
+            if (p.match(self.sadržaj) is None or self.sadržaj == '<'):
+                raise RuntimeError("Neispravan lchar")
             return self.sadržaj #????
     
 

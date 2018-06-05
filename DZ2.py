@@ -1,7 +1,8 @@
 # GRAMATIKA (puna)
+# identifier    -> [A-Za-z_][A-Za-z0-9_]*
 # broj          -> decimalni | heksadekadski
 # decimalni     -> 0 | [1-9][0-9]*
-# heksadekadski ->
+# heksadekadski -> 0[xX][0-9a-fA-F]+
 # string        -> "schar*"
 # char          -> 'cchar'
 # library       -> <lchar*>
@@ -19,3 +20,5 @@
 # op_priruz     -> = | += | -= | *= | /= | %= | <<= | >>=
 #               -> &= | ^= | |=
 # postfix_op    -> -- | ++
+
+

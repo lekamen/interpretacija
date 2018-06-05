@@ -28,11 +28,11 @@ import re
 
 class Tokeni(enum.Enum):
     #separatori
-    OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ, DVOTOCKA = '()[]{},;'
+    OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ, SEP = '()[]{},;'
     #unarni operatori
     USKL, TILDA, MINUS, ZVJ = '!~-*'
     #binarni operatori bez zvjezdice!!!
-    TOCKA, STRELICA, SLASH, MOD, PLUS, MINUS, LSHIFT, RSHIFT = '.', '->', '/', '%', '+', '-', '<<', '>>'
+    TOCKA, STRELICA, SLASH, MOD, PLUS, LSHIFT, RSHIFT = '.', '->', '/', '%', '+', '<<', '>>'
     LESS, LESSEQ, GRTEQ, GRT, EQ, DISEQ, BITAND, BITEXCLOR, BITOR = '<', '<=', '>=', '>', '==', '!=', '&', '^', '|'
     LAND, LOR, CONDQ, CONDDOT = '&&', '||', '?', ':'
     #operatori pridruzivanja bez jednakosti!!!
@@ -58,19 +58,14 @@ class Tokeni(enum.Enum):
             if (p.match(self.sadržaj) is None):
                 raise RuntimeError("Neispravan heksadekadski broj")
             return hex(self.sadržaj) #isprobati!!
-    class NCHAR(Token):
+    class CHRLIT(Token):
         def vrijednost(self):
-            p = re.compile('^[ -~]$')
-            if (p.match(self.sadržaj) is None or self.sadržaj == '"'):
-                raise RuntimeError("Neispravan nchar")
-            return self.sadržaj #????
-    class  LCHAR(Token):
+            return self.sadržaj #testiraj jel 'znak'
+    class STRLIT(Token):
         def vrijednost(self):
-            p = re.compile('^[ -~]$')
-            if (p.match(self.sadržaj) is None or self.sadržaj == '<'):
-                raise RuntimeError("Neispravan lchar")
-            return self.sadržaj #????
-    
-
+            return self.sadržaj#testiraj jel "string"
+    class LIBLIT(Token):
+        def vrijednost(self):
+            return self.sadržaj#testiraj jel <string>
 
 

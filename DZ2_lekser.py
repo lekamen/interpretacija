@@ -1,10 +1,13 @@
-import string.hexdigits
+
+from string import hexdigits
+from pj import *
 from DZ2idiot import *
 
 escapeZnakovi = [Tokeni.NRED, Tokeni.NTAB, Tokeni.NVERTTAB, Tokeni.BACKSP, Tokeni.RET, Tokeni.FFEED, 
     Tokeni.ALERT, Tokeni.QUOTE, Tokeni.DBLQUOTE, Tokeni.ESCSLASH]
 separatori = [Tokeni.OOTV, Tokeni.OZATV, Tokeni.UOTV, Tokeni.UZATV, Tokeni.VOTV, Tokeni.VZATV,
      Tokeni.ZAREZ, Tokeni.SEP]
+
 
 def isxdigit(self, znak):
     """Provjerava je li znak hex znamenka"""
@@ -47,7 +50,7 @@ def Lekser(kôd):
     for znak in iter(lex.čitaj, ''):
         if znak.isalpha or znak == '_':
             # onda je identifier
-            lex.plus(str.isidentifier)
+            lex.plus(isidentifier)
             yield lex.token(Tokeni.IDENTIFIER)
         elif znak.isdigit(): 
             # onda je dec ili hex
@@ -85,16 +88,148 @@ def Lekser(kôd):
                 yield lex.token(Tokeni.DBLQUOTE)
             elif sljedeći == '\\':
                 yield lex.token(Tokeni.ESCSLASH)
-        # je li unarni operator?
+        # je li operator?
+        
+        # !, !=
         elif znak == '!':
-            yield lex.token(Tokeni.USKL)
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.DISEQ)
+            else:
+                yield lex.token(Tokeni.USKL)
+        # ~
         elif znak == '~':
             yield lex.token(Tokeni.TILDA)
-        elif znak == '-':
-            yield lex.token(Tokeni.MINUS)
+        # *, *=
         elif znak == '*':
-            yield lex.token(Tokeni.ZVJ)
-        # je li binarni operator?
+        sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.ZVJEQ)
+            else: 
+                yield lex.token(Tokeni.ZVJ)
+        # .
+        elif znak == '.':
+            yield lex.token(Tokeni.TOCKA)
+        # -, ->, -=, --
+        elif znak == '-':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '>':
+                lex.čitaj()
+                yield lex.token(Tokeni.STRELICA)
+            elif sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.MINUSEQ)
+            elif sljedeći == '-':
+                lex.čitaj()
+                yield lex.token(Tokeni.DECR)
+            else:
+                yield lex.token(Tokeni.MINUS)
+        # /, /=
+        elif znak == '/':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.SLASHEQ)
+            else:
+                yield lex.token(Tokeni.SLASH)
+        # %, %=
+        elif znak == '%':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.MODEQ)
+            else:
+                yield lex.token(Tokeni.MOD)
+        
+        # +, +=, ++
+        elif znak == '+':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.PLUSEQ)
+            elif sljedeći == '+':
+                lex.čitaj()
+                yield lex.token(Tokeni.INCR)
+            else:
+                yield lex.token(Tokeni.PLUS)
+        # <, <<, <<=, <=
+        elif znak == '<':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '<':
+                lex.čitaj()
+                ssljedeći = lex.pogledaj()
+                if ssljedeći == '=':
+                    lex.čitaj()
+                    yield lex.token(Tokeni.LSHIFTEQ)
+                else:
+                    yield lex.token(Tokeni.LSHIFT)
+            elif sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.LESSEQ)
+            else:
+                yield lex.token(Tokeni.LESS)
+        # >, >>, >>=, >=
+        elif znak == '>':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '>':
+                lex.čitaj()
+                ssljedeći = lex.pogledaj()
+                if ssljedeći == '=':
+                    lex.čitaj()
+                    yield lex.token(Tokeni.RSHIFTEQ)
+                else:
+                    yield lex.token(Tokeni.RSHIFT)
+            elif sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.GRTEQ)
+            else:
+                yield lex.token(Tokeni.GRT)
+        # =, ==
+        elif znak == '=':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.EQ)
+            else:
+                yield lex.token(Tokeni.ASSIGN)
+        # &, &=, &&
+        elif znak == '&':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.ANDEQ)
+            elif sljedeći == '&':
+                lex.čitaj()
+                yield lex.token(Tokeni.LAND)
+            else:
+                yield lex.token(Tokeni.BITAND)
+        # |, |=, ||
+        elif znak == '|':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.CRTAEQ)
+            elif sljedeći == '|':
+                lex.čitaj()
+                yield lex.token(Tokeni.LOR)
+            else:
+                yield lex.token(Tokeni.BITOR)
+        # ^, ^=
+        elif znak == '^':
+            sljedeći = lex.pogledaj()
+            if sljedeći == '=':
+                lex.čitaj()
+                yield lex.token(Tokeni.POTEQ)
+            else:
+                yield lex.token(Tokeni.BITEXCLOR)
+        # ?
+        elif znak == '?':
+            yield lex.token(Tokeni.CONDQ)
+        # :
+        elif znak == ':':
+            yield lex.token(Tokeni.CONDDOT)
 
 
         # je li chrlit?
@@ -125,5 +260,3 @@ def Lekser(kôd):
             if (t is not None):
                 yield t
             raise RuntimeError("Neispravan separator")
-
-

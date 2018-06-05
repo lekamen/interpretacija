@@ -36,7 +36,7 @@ class Tokeni(enum.Enum):
     LESS, LESSEQ, GRTEQ, GRT, EQ, DISEQ, BITAND, BITEXCLOR, BITOR = '<', '<=', '>=', '>', '==', '!=', '&', '^', '|'
     LAND, LOR, CONDQ, CONDDOT = '&&', '||', '?', ':'
     #operatori pridruzivanja bez jednakosti!!!
-    PLUSEQ, MINUSEQ, ZVJEQ, SLASHEQ, MODEQ, LSHIFTEQ, RSHIFTEQ = '+=', '-=', '*=', '/=', '%=', '<<=', '>>='
+    PLUSEQ, MINUSEQ, ZVJEQ, SLASHEQ, MODEQ, LSHIFTEQ, RSHIFTEQ, ASSIGN= '+=', '-=', '*=', '/=', '%=', '<<=', '>>=', '='
     ANDEQ, POTEQ, CRTAEQ = '&=', '^=', '|='
     #postfiksni operatori
     DECR, INCR = '--', '++'

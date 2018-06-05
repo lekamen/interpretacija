@@ -30,7 +30,7 @@ def Lekser(kôd):
                 lex.zvijezda = lex.token(str.isdigit)
                 yield lex.token(Tokeni.DECIMALNI)
         # je li escape sequence?
-        elif znak == '\' :
+        elif znak == '\\' :
             sljedeći = lex.čitaj()
             if sljedeći == 'n':
                 yield lex.token(Tokeni.NRED)

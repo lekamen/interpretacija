@@ -43,6 +43,8 @@ class Tokeni(enum.Enum):
     #escape sekvence
     NRED, NTAB, NVERTTAB, BACKSP, RET, FFEED, ALERT = '\n', '\t', '\v', '\b', '\r', '\f', '\a'
     QUOTE, DBLQUOTE, ESCSLASH = '\'', '\"', '\\'
+    #komentari
+    COMMENT, COM_BEGIN, COM_END = '//', '/*', '*/'
     class IDENTIFIER(Token):
         def vrijednost(self): 
             p = re.compile('^[A-Za-z_]\w*$')

@@ -3,12 +3,12 @@ from string import hexdigits
 from pj import *
 from DZ2idiot import *
 
-escapeZnakovi = [Tokeni.NRED, Tokeni.NTAB, Tokeni.NVERTTAB, Tokeni.BACKSP, Tokeni.RET, Tokeni.FFEED, 
-    Tokeni.ALERT, Tokeni.QUOTE, Tokeni.DBLQUOTE, Tokeni.ESCSLASH]
 separatori = [Tokeni.OOTV, Tokeni.OZATV, Tokeni.UOTV, Tokeni.UZATV, Tokeni.VOTV, Tokeni.VZATV,
      Tokeni.ZAREZ, Tokeni.SEP]
+escapeovi = [Tokeni.NRED, Tokeni.NTAB, Tokeni.NVERTTAB, Tokeni.BACKSP, Tokeni.RET, Tokeni.FFEED,
+     Tokeni.ALERT,  Tokeni.QUOTE, Tokeni.DBLQUOTE, Tokeni.ESCSLASH]
 separatoriZnakovi = '()[]{},;'
-
+escapeZnakovi = ['\n', '\t', '\v', '\b', '\r', '\f', '\a', '\'', '\"', '\\']
 
 def isxdigit(znak):
     """Provjerava je li znak hex znamenka"""
@@ -27,14 +27,14 @@ def isNChar(znak):
 
 def isSChar(znak):
     """Provjerava je li znak schar"""
-    if (isNChar or znak in escapeZnakovi):
+    if (isNChar(znak) or znak in escapeZnakovi):
         return True
     return False
 
 def isLChar(znak):
     """Provjerava je li znak lchar"""
     p = re.compile('^[ -~]$')
-    if (p.match(znak) is None or znak == '<'):
+    if (p.match(znak) is None or znak == '>'):
         return False
     return True
 
@@ -44,33 +44,49 @@ def Lekser(kôd):
     for znak in iter(lex.čitaj, ''):
         print("znak")
         print(znak)
-        if znak.isspace(): lex.token(E.PRAZNO) #vidi jel radi za enter i tabulator
+        if znak == ' ': 
+            lex.token(E.PRAZNO) #enter i tabulator su nam tokeni
         if znak == '': lex.token(E.KRAJ)
-        # je li escape sequence?
-        elif znak == '\\' :
-            sljedeći = lex.čitaj()
-            if sljedeći == 'n':
-                yield lex.token(Tokeni.NRED)
-            elif sljedeći == 't':
-                yield lex.token(Tokeni.NTAB)
-            elif sljedeći == 'v':
-                yield lex.token(Tokeni.NVERTTAB)
-            elif sljedeći == 'b':
-                yield lex.token(Tokeni.BACKSP)
-            elif sljedeći == 'r':
-                yield lex.token(Tokeni.RET)
-            elif sljedeći == 'f':
-                yield lex.token(Tokeni.FFEED)
-            elif sljedeći == 'a':
-                yield lex.token(Tokeni.ALERT)
-            elif sljedeći == '\'':
-                yield lex.token(Tokeni.QUOTE)
-            elif sljedeći == '\"':
-                yield lex.token(Tokeni.DBLQUOTE)
-            elif sljedeći == '\\':
-                yield lex.token(Tokeni.ESCSLASH)
+                
+        elif znak.isalpha() or znak == '_':
+            # onda je identifier
+            lex.plus(isidentifier)
+            yield lex.token(Tokeni.IDENTIFIER)
+        elif znak.isdigit(): 
+            # onda je dec ili hex
+            if znak == '0': 
+                sljedeći = lex.pogledaj()
+                if sljedeći == 'x' or sljedeći == 'X':
+                    # onda je hex
+                    lex.čitaj()
+                    lex.plus(isxdigit)
+                    yield lex.token(Tokeni.HEKSADEKADSKI)
+                else:
+                    if(sljedeći.isspace()):
+                        yield lex.token(Tokeni.DECIMALNI)
+                    else:
+                        lex.greška('očekujem x ili X')
+            else:
+                lex.pogledaj()
+                # onda je dec
+                lex.zvijezda(str.isdigit)
+                yield lex.token(Tokeni.DECIMALNI)
+        # TODO: strlit se MORA prepoznavati u parseru!!!
+        # TODO: chrlit se MORA prepoznavati u parseru!!!
+        # je li chrlit?
+        elif znak == "'":
+            idući = lex.čitaj()
+            if (not isNChar(idući) and not idući in escapeZnakovi and not idući == '"' and not idući == '\0'):
+                raise RuntimeError("Neispravan chrlit")
+            kraj = lex.čitaj()
+            if (kraj == "'"):
+                yield lex.token(Tokeni.CHRLIT)
+            else:
+                raise RuntimeError("Neispravan chrlit")           
+        #je li escape sekvenca ili separator?
+        elif znak in escapeZnakovi or znak in separatoriZnakovi:
+            yield Tokeni(znak)
         # je li operator?
-        
         # !, !=
         elif znak == '!':
             sljedeći = lex.pogledaj()
@@ -88,6 +104,9 @@ def Lekser(kôd):
             if sljedeći == '=':
                 lex.čitaj()
                 yield lex.token(Tokeni.ZVJEQ)
+            elif sljedeći == '/':
+                lex.čitaj()
+                yield lex.token(Tokeni.COM_END)
             else: 
                 yield lex.token(Tokeni.ZVJ)
         # .
@@ -113,6 +132,12 @@ def Lekser(kôd):
             if sljedeći == '=':
                 lex.čitaj()
                 yield lex.token(Tokeni.SLASHEQ)
+            elif sljedeći == '/':
+                lex.čitaj()
+                yield lex.token(Tokeni.COMMENT)
+            elif sljedeći == '*':
+                lex.čitaj()
+                yield lex.token(Tokeni.COM_BEGIN)
             else:
                 yield lex.token(Tokeni.SLASH)
         # %, %=
@@ -135,9 +160,10 @@ def Lekser(kôd):
                 yield lex.token(Tokeni.INCR)
             else:
                 yield lex.token(Tokeni.PLUS)
-        # <, <<, <<=, <=
+        #neki od operatora <, <<, <<=, <=?
         elif znak == '<':
             sljedeći = lex.pogledaj()
+
             if sljedeći == '<':
                 lex.čitaj()
                 ssljedeći = lex.pogledaj()
@@ -211,59 +237,10 @@ def Lekser(kôd):
         # :
         elif znak == ':':
             yield lex.token(Tokeni.CONDDOT)
+        
 
-
-        # je li chrlit?
-        elif znak == '\'':
-            idući = lex.čitaj()
-            if (not isNChar(idući) and not idući in escapeZnakovi and not idući == '"' and not idući == '\0'):
-                raise RuntimeError("Neispravan chrlit")
-            kraj = lex.čitaj()
-            if (kraj == '\''):
-                yield lex.token(Tokeni.CHRLIT)
-            raise RuntimeError("Neispravan chrlit")
-        # je li strlit?
-        elif znak == '"':
-            lex.zvijezda(isSChar)
-            kraj = lex.čitaj()
-            if (kraj == '"'):
-                yield lex.token(Tokeni.STRLIT)
-            raise RuntimeError("Neispravan strlit")
-        #je li liblit?
-        elif znak == '<':
-            lex.zvijezda(isLChar)
-            kraj = lex.čitaj()
-            if (kraj == '>'):
-                yield lex.token(Tokeni.LIBLIT)
-        #je li znak separator?
-        elif znak in separatoriZnakovi:
-            yield Tokeni(znak)
-        elif znak.isalpha() or znak == '_':
-            # onda je identifier
-            lex.plus(isidentifier)
-            yield lex.token(Tokeni.IDENTIFIER)
-        elif znak.isdigit(): 
-            # onda je dec ili hex
-            if znak == '0': 
-                sljedeći = lex.pogledaj()
-                if sljedeći == 'x' or sljedeći == 'X':
-                    # onda je hex
-                    print("koji znak ja saljem ovdje")
-                    print(sljedeći)
-                    lex.čitaj()
-                    lex.plus(isxdigit)
-                    yield lex.token(Tokeni.HEKSADEKADSKI)
-                else:
-                    if(sljedeći.isspace()):
-                        yield lex.token(Tokeni.DECIMALNI)
-                    else:
-                        lex.greška('očekujem x ili X')
-            else:
-                lex.pogledaj()
-                # onda je dec
-                lex.zvijezda(str.isdigit)
-                yield lex.token(Tokeni.DECIMALNI)
 
 if __name__ == '__main__':
-    lista = list(Lekser("1 _nesto0 () ; * -> += -= << >> <<= >>= 0x23"))
-    print (lista)
+    #lista = list(Lekser("1 _nesto0 () ; * -> += <lib\"char  0x23 \n \t \v alo \' ' '\0'"))
+    lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char  0x23 bla_b<<=bl\" ba"))
+    print (*lista)

@@ -31,3 +31,5 @@ f  {
   }
       -> prvo se ide unutar h jel ima neki except tj. catch blok, i onda se putuje gore, gleda se jel u g ima neki except
       -> na taj se način implementira i break, i continue, i return!
+
+chainmap iz python collections za scope

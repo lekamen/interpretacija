@@ -512,7 +512,7 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  char c = 'a'; 3 < 5; a >= 10; a == true; b != false;"
+    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  a(6); char c = 'a'; a('b'); 3 < 5; a >= 10; a == true; b != false;"
     #vrati ovo    
     #print (ulaz)
     #lista = list(Lekser(ulaz))

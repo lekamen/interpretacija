@@ -51,25 +51,25 @@ class Tokeni(enum.Enum):
     # statementi
     # IF, ELSE, WHILE, FOR, RETURN, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'return', 'assert', 'error'
     class IDENTIFIER(Token):
-        def vrijednost(self): 
+        def vrijednost(self, imena, vrijednosti): 
             return str(self.sadržaj) #isprobati još?
     class DECIMALNI(Token):
-        def vrijednost(self): 
+        def vrijednost(self, imena, vrijednosti): 
             return int(self.sadržaj)
     class HEKSADEKADSKI(Token):
-        def vrijednost(self):
+        def vrijednost(self, imena, vrijednosti):
             return hex(self.sadržaj) #isprobati!!
     class CHRLIT(Token):
-        def vrijednost(self):
+        def vrijednost(self, imena, vrijednosti):
             return self.sadržaj[1 : len(self.sadržaj) - 1] #testiraj jel 'znak'
     class STRLIT(Token):
-        def vrijednost(self):
+        def vrijednost(self, imena, vrijednosti):
             return self.sadržaj[1 : len(self.sadržaj) - 1]#testiraj jel "string"
     class LIBLIT(Token):
         def vrijednost(self):
             return self.sadržaj#testiraj jel <string>
     class BOOLEAN(Token):
-        def vrijednost(self):
+        def vrijednost(self, imena, vrijednosti):
             return self.sadržaj == 'true'
     class NULL(Token):
         def vrijednost(self):

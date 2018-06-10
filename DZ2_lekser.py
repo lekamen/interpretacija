@@ -84,6 +84,18 @@ def Lekser(kôd):
         elif znak == '"': #prelazimo u stanje citanja stringa
             citamString = True
             continue
+        elif znak == 'i':
+            sljedeći = lex.pogledaj()
+            if sljedeći == 'f':
+                # probaj pročitati if
+                lex.čitaj()
+                ssljedeći = lex.pogledaj()
+                if ssljedeći.isspace():
+                    yield lex.token(Tokeni.IF)
+                else:
+                # ako ne uspije, vrati glavu nazad
+                    lex.vrati()
+
         elif znak.isalpha() or znak == '_':
             # onda je identifier
             lex.zvijezda(identifikator)
@@ -127,7 +139,7 @@ def Lekser(kôd):
                 raise RuntimeError("Neispravan chrlit")           
         #je li escape sekvenca ili separator?
         elif znak in escapeZnakovi or znak in separatoriZnakovi:
-            yield Tokeni(znak)
+            yield lex.token(Tokeni(znak))
         # je li operator?
         # !, !=
         elif znak == '!':
@@ -279,6 +291,7 @@ def Lekser(kôd):
         # :
         elif znak == ':':
             yield lex.token(Tokeni.CONDDOT)
+
         
 #globalni spremnik korištenih varijabli u programu
 globalneVarijable = ChainMap()
@@ -306,10 +319,29 @@ class C0Parser(Parser):
             #ako nakon njega slijedi pridruživanje, vratit varijablu
             var = self.zadnji
             idući = self.pogledaj()
+            print(idući)
             if idući ** Tokeni.ASSIGN:
                 self.pročitaj(Tokeni.ASSIGN)
                 vrijednost = self.expression()
                 return self.odrediVarijablu(var, vrijednost)
+            elif idući ** Tokeni.OOTV:
+                self.pročitaj(Tokeni.OOTV)
+                konstruktor_argumenti = []
+                while True:
+                    sljedeći = self.pogledaj()
+                    print(sljedeći)
+                    if sljedeći ** Tokeni.OZATV:
+                        self.pročitaj(Tokeni.OZATV)
+                        break
+                    else:
+                        ssljedeći = self.expression()
+                        konstruktor_argumenti.append(ssljedeći)
+                        zarez = self.pogledaj()
+                        if zarez ** Tokeni.ZAREZ:
+                            self.pročitaj(Tokeni.ZAREZ)
+                        print("daddy attention" + str(zarez))
+                return Konstrukcija(var, konstruktor_argumenti)
+                        
             else:
                 print("u else")
                 return var
@@ -337,6 +369,7 @@ class C0Parser(Parser):
             #prvi član pravila nije expression
             self.greška()
             #može se dogoditi i da stoji samo jedan izraz, mora se i to obraditi
+
 
     def start(self):
         naredbe = [self.naredba()]
@@ -402,6 +435,39 @@ class C0Parser(Parser):
             globalneVarijableTipovi[ime] = 'string'
             return Varijabla(tip, ime, vrijednost)
 
+    #def lijevaVrijednost(self):
+    #    if self >> Tokeni.IDENTIFIER:
+    #        # pročitao si varijablu, vrati je
+    #        trenutni = self.zadnji
+    #        while True:
+    #            if self >> Tokeni.TOCKA:
+    #                # dolje: function identifier?
+    #                fid = self.pročitaj(Tokeni.IDENTIFIER)
+    #                trenutni = Tocka(trenutni, fid)
+    #                # nisam još napisao točku
+    #            elif self >> #OVDJE SAM STAO
+    #                
+    #                
+    #        return self.zadnji
+    #    elif self >> Tokeni.ZVJ:
+    #        return self.lijevaVrijednost()
+    #    # <vid> = variable identifier?
+    #
+    #    elif self >> Tokeni.OOTV:
+    #        u_zagradi = self.lijevaVrijednost()
+    #        self.pročitaj(Tokeni.OZATV)
+    #        
+    #        return u_zagradi
+
+        
+        
+        
+
+        
+            
+
+
+
 class Program(AST('naredbe')):
     def vrijednost(self):
         imena = {}
@@ -449,13 +515,25 @@ class Tilda(AST('iza')):
 class Minus(AST('iza')):
     def vrijednost(izraz):
         return - izraz.iza.vrijednost()
+class Konstrukcija(AST('objekt argumenti')):
+    """Konstrukcija objekta s argumentima za konstruktor"""
+    # zasad konstruktor podržava samo primitivne tipove
+    def vrijednost(izraz):
+        o = izraz.objekt.vrijednost()
+        a = izraz.argumenti
+        for argument in a:
+            o = argument.vrijednost()
+        return o
+        
+
+
 
 if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * -> += <lib\"char  0x23 \n \t \v alo \' ' '\0'"))
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r" NULL !true ~5  -5  int a = 2  char c = 'a'  a = 4"
+    ulaz = r" NULL !true ~5  -5  int a = 2 a(6)  char c = 'a' a('b') a = 4"
     #print (ulaz)
     #lista = list(Lekser(ulaz))
     #print (*lista)

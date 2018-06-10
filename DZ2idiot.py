@@ -47,6 +47,8 @@ class Tokeni(enum.Enum):
     COMMENT, COM_BEGIN, COM_END = '//', '/*', '*/'
     #tipovi podataka
     INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
+    # statementi
+    # IF, ELSE, WHILE, FOR, RETURN, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'return', 'assert', 'error'
     class IDENTIFIER(Token):
         def vrijednost(self): 
             return str(self.sadržaj) #isprobati još?

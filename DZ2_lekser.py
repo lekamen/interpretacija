@@ -297,13 +297,37 @@ def Lekser(kôd):
 globalneVarijable = ChainMap()
 globalneVarijableTipovi = ChainMap()
 
-osnovniIzrazi = {Tokeni.BOOLEAN, Tokeni.HEKSADEKADSKI, Tokeni.DECIMALNI,
-                Tokeni.STRLIT, Tokeni.CHRLIT, Tokeni.NULL}
+osnovniIzrazi = { Tokeni.STRLIT, Tokeni.NULL}
 class C0Parser(Parser):
 
-    def naredba(self):
+    def stmt(self):
         print(" u naredbi ")
-        return self.expression()
+        #ovdje prvo ispitat jesu tokeni if, while, for, return, assert, error
+        if self >> Tokeni.VOTV:
+            blok = self.stmt()
+            self.pročitaj(Tokeni.VZATV)
+            return blok
+        else:
+            simple = self.simple()
+            self.pročitaj(Tokeni.SEP)
+            return simple
+
+
+    def simple(self):
+        #ostali.....
+        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
+            tip = self.zadnji
+            varijabla = self.pročitaj(Tokeni.IDENTIFIER)
+            print("Jesmo ovdje")
+            print(tip)
+            print(varijabla)
+            if self >> Tokeni.ASSIGN:
+                desna = self.expression()
+                return Pridruživanje(tip, varijabla, desna)
+            else:
+                return Varijabla(tip, varijabla)
+        else:
+            return self.expression()
 
     def expression(self):
         print ("u izrazu")
@@ -315,6 +339,15 @@ class C0Parser(Parser):
             return u_zagradi
         if self >> osnovniIzrazi:
             return self.zadnji
+        if self >> Tokeni.BOOLEAN:
+            lijevaStrana = self.zadnji
+            if self >> {Tokeni.EQ, Tokeni.DISEQ}:
+                isJednako = True if self.zadnji ** Tokeni.EQ else False
+                desnaStrana = self.expression()
+                return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            else:
+                return lijevaStrana
+
         if self >> Tokeni.IDENTIFIER:
             #ako nakon njega slijedi pridruživanje, vratit varijablu
             var = self.zadnji
@@ -341,16 +374,39 @@ class C0Parser(Parser):
                             self.pročitaj(Tokeni.ZAREZ)
                         print("daddy attention" + str(zarez))
                 return Konstrukcija(var, konstruktor_argumenti)
-                        
+            #vidi jel operator uspoređivanja iza
+            if self >> {Tokeni.LESS, Tokeni.LESSEQ}: 
+                isManjeJednako = True if self.zadnji ** Tokeni.LESSEQ else False
+                desnaStrana = self.expression()
+                return ManjeJednako(var, desnaStrana, isManjeJednako)
+            elif self >> {Tokeni.GRT, Tokeni.GRTEQ}:
+                isVeceJednako = True if self.zadnji ** Tokeni.GRTEQ else False
+                desnaStrana = self.expression()
+                return VeceJednako(var, desnaStrana, isVeceJednako)
+            elif self >> {Tokeni.EQ, Tokeni.DISEQ}:
+                isJednako = True if self.zadnji ** Tokeni.EQ else False
+                desnaStrana = self.expression()
+                return JednakoRazlicito(var, desnaStrana, isJednako)
             else:
-                print("u else")
                 return var
-        #varijable
-        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.CHAR, Tokeni.STRING}:
-            var = self.vratiVarijablu()
-            print ("prije vracanja var")
-            print (var)
-            return var
+                        
+        if self >> {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.CHRLIT}:
+            lijevaStrana = self.zadnji
+            #vidi jel operator uspoređivanja iza
+            if self >> {Tokeni.LESS, Tokeni.LESSEQ}: 
+                isManjeJednako = True if self.zadnji ** Tokeni.LESSEQ else False
+                desnaStrana = self.expression()
+                return ManjeJednako(lijevaStrana, desnaStrana, isManjeJednako)
+            elif self >> {Tokeni.GRT, Tokeni.GRTEQ}:
+                isVeceJednako = True if self.zadnji ** Tokeni.GRTEQ else False
+                desnaStrana = self.expression()
+                return VeceJednako(lijevaStrana, desnaStrana, isVeceJednako)
+            elif self >> {Tokeni.EQ, Tokeni.DISEQ}:
+                isJednako = True if self.zadnji ** Tokeni.EQ else False
+                desnaStrana = self.expression()
+                return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            else:
+                return lijevaStrana
         #unarni operatori
         if self >> Tokeni.USKL:
             iza = self.expression()
@@ -372,101 +428,11 @@ class C0Parser(Parser):
 
 
     def start(self):
-        naredbe = [self.naredba()]
+        naredbe = [self.stmt()]
         while not self >> E.KRAJ:
             print ("jel ovo zadnje")
-            naredbe.append(self.naredba())
+            naredbe.append(self.stmt())
         return Program(naredbe)
-
-    def odrediVarijablu(self, var, vrijednost):
-        ime = var.vrijednost()
-        tip = globalneVarijableTipovi[var]
-
-        if tip == 'int':
-            value = 0
-            if vrijednost is not None:
-                value = vrijednost
-        elif tip == 'bool':
-            value = False
-            if vrijednost is not None:
-                value = vrijednost
-                
-        elif tip == 'char':
-            value = '\0'
-            if vrijednost is not None:
-                value = vrijednost
-        else:
-            value = ""
-            if vrijednost is not None:
-                value = vrijednost
-
-        return Varijabla(tip, var, value)
-            
-
-    def vratiVarijablu(self):
-        tip = self.zadnji.tip.name.lower()
-        ime = self.pročitaj(Tokeni.IDENTIFIER)
-        idući = self.pogledaj()
-        print (idući)
-        if idući ** Tokeni.ASSIGN:
-            self.pročitaj(Tokeni.ASSIGN)
-            vrijednost = self.expression()
-        else:
-            if tip == 'int':
-                vrijednost = 0
-            elif tip == 'bool':
-                vrijednost = False
-            elif tip == 'char':
-                vrijednost = '\0'
-            else:
-                vrijednost = ""
-
-        globalneVarijable[ime] = vrijednost
-        if tip == 'int':
-            globalneVarijableTipovi[ime] = 'int'
-            return Varijabla(tip, ime, vrijednost)
-        elif tip == 'bool':
-            globalneVarijableTipovi[ime] = 'bool'
-            return Varijabla(tip, ime, vrijednost)
-        elif tip == 'char':
-            globalneVarijableTipovi[ime] = 'char'
-            return Varijabla(tip, ime, vrijednost)
-        else:
-            globalneVarijableTipovi[ime] = 'string'
-            return Varijabla(tip, ime, vrijednost)
-
-    #def lijevaVrijednost(self):
-    #    if self >> Tokeni.IDENTIFIER:
-    #        # pročitao si varijablu, vrati je
-    #        trenutni = self.zadnji
-    #        while True:
-    #            if self >> Tokeni.TOCKA:
-    #                # dolje: function identifier?
-    #                fid = self.pročitaj(Tokeni.IDENTIFIER)
-    #                trenutni = Tocka(trenutni, fid)
-    #                # nisam još napisao točku
-    #            elif self >> #OVDJE SAM STAO
-    #                
-    #                
-    #        return self.zadnji
-    #    elif self >> Tokeni.ZVJ:
-    #        return self.lijevaVrijednost()
-    #    # <vid> = variable identifier?
-    #
-    #    elif self >> Tokeni.OOTV:
-    #        u_zagradi = self.lijevaVrijednost()
-    #        self.pročitaj(Tokeni.OZATV)
-    #        
-    #        return u_zagradi
-
-        
-        
-        
-
-        
-            
-
-
 
 class Program(AST('naredbe')):
     def vrijednost(self):
@@ -476,8 +442,13 @@ class Program(AST('naredbe')):
             naredba.vrijednost()
         return imena
 
-class Varijabla(AST('tip ime vrijedn')):
+class Varijabla(AST('tip ime')):
     def vrijednost(izraz):
+        return
+
+class Pridruživanje(AST('tip ime vrijedn')):
+    def vrijednost(izraz):
+
         if izraz.tip == 'int':
             if (not isinstance(izraz.vrijedn.vrijednost(), int)):
                 raise ValueError("Nekompatibilni tipovi")
@@ -493,13 +464,21 @@ class Varijabla(AST('tip ime vrijedn')):
         elif izraz.tip == 'string':
             if (not isinstance(izraz.vrijedn.vrijednost(), str)):
                 raise ValueError("Nekompatibilni tipovi")
+        
+        #mem[self.ime.sadržaj] = self.pridruženo.vrijednost(mem)
 
-        if (izraz.ime in globalneVarijable):
-            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
+#ovdje svugdje provjera jesu jednake strane i provjera šta je desna strana
+class ManjeJednako(AST('lijevaStrana desnaStrana isManjeJednako')):
+    def vrijednost(izraz):
+        return
 
-        try: return globalneVarijable[izraz.ime]
-        except KeyError: izraz.ime.nedeklaracija()
+class VeceJednako(AST('lijevaStrana desnaStrana isVeceJednako')):
+    def vrijednost(izraz):
+        return
 
+class JednakoRazlicito(AST('lijevaStrana desnaStrana isJednako')):
+    def vrijednost(izraz):
+        return
 
 class Negacija(AST('iza')):
     """Negacija izraza."""
@@ -533,7 +512,8 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r" NULL !true ~5  -5  int a = 2 a(6)  char c = 'a' a('b') a = 4"
+    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  char c = 'a'; 3 < 5; a >= 10; a == true; b != false;"
+    #vrati ovo    
     #print (ulaz)
     #lista = list(Lekser(ulaz))
     #print (*lista)
@@ -544,5 +524,5 @@ if __name__ == '__main__':
     print(*tokeni)
     program = C0Parser.parsiraj(tokeni)
     print(program)
-    print (program.vrijednost())
+    #print (program.vrijednost())
     

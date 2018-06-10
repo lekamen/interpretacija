@@ -28,7 +28,8 @@ import re
 
 class Tokeni(enum.Enum):
     #separatori
-    OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ, SEP = '()[]{},;'
+    OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ = '()[]{},'
+    SEP = ';'
     #unarni operatori
     USKL, TILDA, MINUS, ZVJ = '!~-*'
     #binarni operatori bez zvjezdice!!!

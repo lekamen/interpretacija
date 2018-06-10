@@ -58,7 +58,7 @@ class Tokeni(enum.Enum):
             return hex(self.sadržaj) #isprobati!!
     class CHRLIT(Token):
         def vrijednost(self):
-            return self.sadržaj #testiraj jel 'znak'
+            return self.sadržaj[1 : len(self.sadržaj) - 1] #testiraj jel 'znak'
     class STRLIT(Token):
         def vrijednost(self):
             return self.sadržaj[1 : len(self.sadržaj) - 1]#testiraj jel "string"

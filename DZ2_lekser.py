@@ -312,10 +312,13 @@ class C0Parser(Parser):
                 return self.odrediVarijablu(var, vrijednost)
             else:
                 print("u else")
-                return self.zadnji
+                return var
         #varijable
         if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.CHAR, Tokeni.STRING}:
-            return self.vratiVarijablu()
+            var = self.vratiVarijablu()
+            print ("prije vracanja var")
+            print (var)
+            return var
         #unarni operatori
         if self >> Tokeni.USKL:
             iza = self.expression()
@@ -332,18 +335,13 @@ class C0Parser(Parser):
         else:
             #do ovdje su odrađeni svi slučajevi gramatike gdje
             #prvi član pravila nije expression
-            print("else je u pitanju")
-            #print(self.zadnji)
-            
-            print(self.zadnji)
-            return self.zadnji
-            #if idući
-
+            self.greška()
             #može se dogoditi i da stoji samo jedan izraz, mora se i to obraditi
 
     def start(self):
         naredbe = [self.naredba()]
-        while not self >> E.KRAJ: 
+        while not self >> E.KRAJ:
+            print ("jel ovo zadnje")
             naredbe.append(self.naredba())
         return Program(naredbe)
 
@@ -355,12 +353,6 @@ class C0Parser(Parser):
             value = 0
             if vrijednost is not None:
                 value = vrijednost
-            print(tip)
-            print(ime)
-            print(value)
-            v = Varijabla(tip, ime, value)
-            print(v)
-            return v
         elif tip == 'bool':
             value = False
             if vrijednost is not None:
@@ -374,6 +366,8 @@ class C0Parser(Parser):
             value = ""
             if vrijednost is not None:
                 value = vrijednost
+
+        return Varijabla(tip, var, value)
             
 
     def vratiVarijablu(self):
@@ -394,15 +388,19 @@ class C0Parser(Parser):
             else:
                 vrijednost = ""
 
+        globalneVarijable[ime] = vrijednost
         if tip == 'int':
             globalneVarijableTipovi[ime] = 'int'
             return Varijabla(tip, ime, vrijednost)
-        #elif tip == 'bool':
-        #    return Varijabla(tip, ime, vrijednost)
-        #elif tip == 'char':
-        #    return Varijabla(tip, ime, vrijednost)
-        #else:
-        #    return Varijabla(tip, ime, vrijednost)
+        elif tip == 'bool':
+            globalneVarijableTipovi[ime] = 'bool'
+            return Varijabla(tip, ime, vrijednost)
+        elif tip == 'char':
+            globalneVarijableTipovi[ime] = 'char'
+            return Varijabla(tip, ime, vrijednost)
+        else:
+            globalneVarijableTipovi[ime] = 'string'
+            return Varijabla(tip, ime, vrijednost)
 
 class Program(AST('naredbe')):
     def vrijednost(self):
@@ -414,50 +412,27 @@ class Program(AST('naredbe')):
 
 class Varijabla(AST('tip ime vrijedn')):
     def vrijednost(izraz):
-
-        
         if izraz.tip == 'int':
-            if (not isinstance(izraz.vrijedn.vrijednost, int)):
+            if (not isinstance(izraz.vrijedn.vrijednost(), int)):
                 raise ValueError("Nekompatibilni tipovi")
 
         elif izraz.tip == 'char':
-            if (not isinstance(izraz.vrijedn.vrijednost, str) or len(izraz.vrijedn.vrijednost) != 1):
+            if (not isinstance(izraz.vrijedn.vrijednost(), str) or len(izraz.vrijedn.vrijednost()) != 1):
                 raise ValueError("Nekompatibilni tipovi")
 
         elif izraz.tip == 'bool':
-            if (not isinstance(izraz.vrijedn.vrijednost, bool)):
+            if (not isinstance(izraz.vrijedn.vrijednost(), bool)):
                 raise ValueError("Nekompatibilni tipovi")
 
         elif izraz.tip == 'string':
-            if (not isinstance(izraz.vrijedn.vrijednost, str)):
+            if (not isinstance(izraz.vrijedn.vrijednost(), str)):
                 raise ValueError("Nekompatibilni tipovi")
 
         if (izraz.ime in globalneVarijable):
             globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
-            povratnaVrijednost = globalneVarijable[izraz.ime]
-
-        print(isinstance(izraz.vrijedn.vrijednost(), izraz.tip))
-        if (izraz.vrijedn.vrijednost() is not izraz.tip):
-            raise ValueError("Nekompatibilni tipovi")
-
-        if (izraz.tip != 'x'):
-            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
-        elif (izraz.ime in globalneVarijable):
-            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
 
         try: return globalneVarijable[izraz.ime]
         except KeyError: izraz.ime.nedeklaracija()
-
-# class IntVarijabla(AST('tip ime vrijedn')):
-#     def vrijednost(izraz):
-#         if (not isinstance(izraz.vrijedn.vrijednost, int)):
-#             raise ValueError("Nekompatibilni tipovi")
-        
-#         if (izraz.ime in globalneVarijableInt):
-#             globalneVarijableInt[izraz.ime] = izraz.vrijedn.vrijednost()
-
-#         try: return globalneVarijableInt[izraz.ime]
-#         except KeyError: izraz.ime.nedeklaracija()
 
 
 class Negacija(AST('iza')):
@@ -480,7 +455,7 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r" NULL !true ~5  -5  int a = 2  char c = 'a'   a = 6"
+    ulaz = r" NULL !true ~5  -5  int a = 2  char c = 'a'  a = 4"
     #print (ulaz)
     #lista = list(Lekser(ulaz))
     #print (*lista)

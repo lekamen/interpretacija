@@ -497,20 +497,24 @@ class C0Parser(Parser):
 
 class Program(AST('naredbe')):
     def vrijednost(self):
-        imena = ChainMap()
+        tipovi = ChainMap()
         vrijednosti = ChainMap()
+        rezultati = []
         for naredba in self.naredbe: 
-            print (naredba.vrijednost())
-            naredba.vrijednost(imena, vrijednosti)
-        return imena
+            rezultati.append(naredba.vrijednost(tipovi, vrijednosti))
+        return tipovi, vrijednosti, rezultati
 
 class Varijabla(AST('tip ime')):
     def vrijednost(izraz, imena, vrijednosti):
         imena[izraz.ime] = izraz.tip
+        print("varijabla")
+        print(izraz.ime)
         return izraz.ime
 
 class Pridruživanje(AST('varijabla vrijedn')):
     def vrijednost(izraz, imena, vrijednosti):
+
+        izraz.varijabla.vrijednost(imena, vrijednosti)
 
         if izraz.varijabla.tip == 'int':
             if (not isinstance(izraz.vrijedn.vrijednost(), int)):
@@ -528,55 +532,74 @@ class Pridruživanje(AST('varijabla vrijedn')):
             if (not isinstance(izraz.vrijedn.vrijednost(), str)):
                 raise ValueError("Nekompatibilni tipovi")
         
-        vrijednosti[izraz.varijabla] = izraz.vrijedn
+        vrijednosti[izraz.varijabla.ime] = izraz.vrijedn
 
 #ovdje svugdje provjera jesu jednake strane i provjera šta je desna strana
 class ManjeJednako(AST('lijevaStrana desnaStrana isManjeJednako')):
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return
 
 class VeceJednako(AST('lijevaStrana desnaStrana isVeceJednako')):
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return
 
 class JednakoRazlicito(AST('lijevaStrana desnaStrana isJednako')):
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return
 
-class BinarnaOperacija(AST('var desnaStrana operacija')):
-    def vrijednost(izraz):
-        return
+class BinarnaOperacija(AST('lijevaStrana desnaStrana operacija')):
+    def vrijednost(izraz, imena, vrijednosti):
+        print (izraz)
+        if (izraz.lijevaStrana in imena):
+            lijevi = vrijednosti[izraz.lijevaStrana].vrijednost()
+        else:
+            lijevi = izraz.lijevaStrana.vrijednost()
 
-class BitwiseOperacija(AST('var desnaStrana operacija')):
-    def vrijednost(izraz):
+        if (izraz.desnaStrana in imena):
+            desni = vrijednosti[izraz.desnaStrana].vrijednost()
+        else:
+            desni = izraz.desnaStrana.vrijednost()
+
+        print(lijevi)
+        print(desni)
+        if izraz.operacija ** Tokeni.PLUS:
+            print("tu")
+            rezultat = lijevi + desni
+
+        print(rezultat)
+        return rezultat
+
+class BitwiseOperacija(AST('lijevaStrana desnaStrana operacija')):
+    def vrijednost(izraz, imena, vrijednosti):
         return
 
 class LogičkaOperacija(AST('lijevaStrana desnaStrana operacija')):
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return
 
 class TernarniOperator(AST('lijevaStrana prviUvjet drugiUvjet')):
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return
 
 class Negacija(AST('iza')):
     """Negacija izraza."""
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return not izraz.iza.vrijednost()
 
 
 class Tilda(AST('iza')):
     """Bitwise unary complement"""
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return ~izraz.iza.vrijednost()
 
 class Minus(AST('iza')):
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         return - izraz.iza.vrijednost()
+
 class Konstrukcija(AST('objekt argumenti')):
     """Konstrukcija objekta s argumentima za konstruktor"""
     # zasad konstruktor podržava samo primitivne tipove
-    def vrijednost(izraz):
+    def vrijednost(izraz, imena, vrijednosti):
         o = izraz.objekt.vrijednost()
         a = izraz.argumenti
         for argument in a:
@@ -603,8 +626,8 @@ if __name__ == '__main__':
     #         a == true ? a : false;"""
     ulaz = r"""
        
-        int a = 4;
-        a = 5;
+        int a = 3;
+        a + 3;
     """
 
     #vrati ovo    
@@ -618,5 +641,5 @@ if __name__ == '__main__':
     print(*tokeni)
     program = C0Parser.parsiraj(tokeni)
     print(program)
-    #print (program.vrijednost())
+    print (program.vrijednost())
     

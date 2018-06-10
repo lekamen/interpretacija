@@ -284,8 +284,7 @@ def Lekser(kôd):
 globalneVarijable = ChainMap()
 globalneVarijableTipovi = ChainMap()
 
-osnovniIzrazi = {Tokeni.IDENTIFIER, Tokeni.BOOLEAN, Tokeni.HEKSADEKADSKI, Tokeni.DECIMALNI,
-                Tokeni.STRLIT, Tokeni.CHRLIT, Tokeni.NULL}
+osnovniIzrazi = { Tokeni.STRLIT, Tokeni.NULL}
 class C0Parser(Parser):
 
     def stmt(self):
@@ -327,6 +326,31 @@ class C0Parser(Parser):
             return u_zagradi
         if self >> osnovniIzrazi:
             return self.zadnji
+        if self >> Tokeni.BOOLEAN:
+            lijevaStrana = self.zadnji
+            if self >> {Tokeni.EQ, Tokeni.DISEQ}:
+                isJednako = True if self.zadnji ** Tokeni.EQ else False
+                desnaStrana = self.expression()
+                return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            else:
+                return lijevaStrana
+        if self >> {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.CHRLIT, Tokeni.IDENTIFIER}:
+            lijevaStrana = self.zadnji
+            #vidi jel operator uspoređivanja iza
+            if self >> {Tokeni.LESS, Tokeni.LESSEQ}: 
+                isManjeJednako = True if self.zadnji ** Tokeni.LESSEQ else False
+                desnaStrana = self.expression()
+                return ManjeJednako(lijevaStrana, desnaStrana, isManjeJednako)
+            elif self >> {Tokeni.GRT, Tokeni.GRTEQ}:
+                isVeceJednako = True if self.zadnji ** Tokeni.GRTEQ else False
+                desnaStrana = self.expression()
+                return VeceJednako(lijevaStrana, desnaStrana, isVeceJednako)
+            elif self >> {Tokeni.EQ, Tokeni.DISEQ}:
+                isJednako = True if self.zadnji ** Tokeni.EQ else False
+                desnaStrana = self.expression()
+                return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            else:
+                return lijevaStrana
         #unarni operatori
         if self >> Tokeni.USKL:
             iza = self.expression()
@@ -386,7 +410,18 @@ class Pridruživanje(AST('tip ime vrijedn')):
         
         #mem[self.ime.sadržaj] = self.pridruženo.vrijednost(mem)
 
+#ovdje svugdje provjera jesu jednake strane i provjera šta je desna strana
+class ManjeJednako(AST('lijevaStrana desnaStrana isManjeJednako')):
+    def vrijednost(izraz):
+        return
 
+class VeceJednako(AST('lijevaStrana desnaStrana isVeceJednako')):
+    def vrijednost(izraz):
+        return
+
+class JednakoRazlicito(AST('lijevaStrana desnaStrana isJednako')):
+    def vrijednost(izraz):
+        return
 
 class Negacija(AST('iza')):
     """Negacija izraza."""
@@ -408,7 +443,7 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  char c = 'a';"
+    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  char c = 'a'; 3 < 5; a >= 10; a == true; b != false;"
     #vrati ovo    
     #print (ulaz)
     #lista = list(Lekser(ulaz))

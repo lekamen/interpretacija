@@ -4,10 +4,6 @@ from pj import *
 from collections import ChainMap
 from DZ2idiot import *
 
-separatori = [Tokeni.OOTV, Tokeni.OZATV, Tokeni.UOTV, Tokeni.UZATV, Tokeni.VOTV, Tokeni.VZATV,
-     Tokeni.ZAREZ, Tokeni.SEP]
-escapeovi = [Tokeni.NRED, Tokeni.NTAB, Tokeni.NVERTTAB, Tokeni.BACKSP, Tokeni.RET, Tokeni.FFEED,
-     Tokeni.ALERT,  Tokeni.QUOTE, Tokeni.DBLQUOTE, Tokeni.ESCSLASH]
 separatoriZnakovi = '()[]{},;'
 escapeZnakovi = ['\n', '\t', '\v', '\b', '\r', '\f', '\a', '\'', '\"', '\\']
 escapeChars = ['n', 't', 'v', 'b', 'r', 'f', 'a', "'", '"', '\\']
@@ -62,9 +58,6 @@ def Lekser(kôd):
     citamString = False
 
     for znak in iter(lex.čitaj, ''):
-        print("znak")
-        print(znak)
-        print(citamString)
         if (citamString):
             if znak == '\\':
                 idući = lex.čitaj()
@@ -74,8 +67,6 @@ def Lekser(kôd):
                 continue
             elif znak == '"':
                 citamString = False
-                print (lex.sadržaj)
-                print (lex.sadržaj[1 : len(lex.sadržaj) - 1])
                 yield lex.token(Tokeni.STRLIT)
             else:
                 lex.greška("Neispravan string")
@@ -99,8 +90,6 @@ def Lekser(kôd):
         elif znak.isalpha() or znak == '_':
             # onda je identifier
             lex.zvijezda(identifikator)
-            print("identifikator....")
-            print(lex.sadržaj)
             if lex.sadržaj in {'true', 'false'}: yield lex.token(Tokeni.BOOLEAN)
             elif (lex.sadržaj == 'NULL'): yield lex.token(Tokeni.NULL)
             elif (lex.sadržaj in tipoviPodataka): yield lex.token(Tokeni(lex.sadržaj))
@@ -297,10 +286,6 @@ def Lekser(kôd):
         elif znak == ':':
             yield lex.token(Tokeni.CONDDOT)
 
-        
-#globalni spremnik korištenih varijabli u programu
-globalneVarijable = ChainMap()
-globalneVarijableTipovi = ChainMap()
 
 osnovniIzrazi = {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.STRLIT, Tokeni.CHRLIT,
             Tokeni.BOOLEAN, Tokeni.IDENTIFIER, Tokeni.NULL}
@@ -449,7 +434,6 @@ class C0Parser(Parser):
             return Minus(iza)
 
         baza = self.base()
-        print (baza)
         return baza
 
     def base(self):
@@ -481,8 +465,6 @@ class Program(AST('naredbe')):
 class Varijabla(AST('tip ime')):
     def vrijednost(izraz, imena, vrijednosti):
         imena[izraz.ime] = izraz.tip
-        print("varijabla")
-        print(izraz.ime)
         return izraz.ime
 
 class Pridruživanje(AST('varijabla vrijedn')):
@@ -499,7 +481,6 @@ class Pridruživanje(AST('varijabla vrijedn')):
                 raise ValueError("Nekompatibilni tipovi")
 
         elif izraz.varijabla.tip ** Tokeni.BOOL:
-            print("ovdje")
             if (not isinstance(izraz.vrijedn.vrijednost(imena, vrijednosti), bool)):
                 raise ValueError("Nekompatibilni tipovi")
 
@@ -647,18 +628,12 @@ if __name__ == '__main__':
     ulaz = r"""
        
 
-        int b = true;
+        int b = 4;
 
     """
     #TODO: konstrukcija ponovno uklopit
     #a * 3 + 5 * 7
     #vrati ovo    
-    #print (ulaz)
-    #lista = list(Lekser(ulaz))
-    #print (*lista)
-    #print (ulaz)
-
-
     tokeni = list(Lekser(ulaz))
     print(*tokeni)
     program = C0Parser.parsiraj(tokeni)

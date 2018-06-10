@@ -138,8 +138,13 @@ def Lekser(kôd):
             else:
                 raise RuntimeError("Neispravan chrlit")           
         #je li escape sekvenca ili separator?
-        elif znak in escapeZnakovi or znak in separatoriZnakovi:
+        elif znak in separatoriZnakovi:
             yield lex.token(Tokeni(znak))
+        elif znak in escapeZnakovi:
+            if (znak.isspace()):
+                lex.token(Tokeni(znak))
+            else:
+                yield lex.token(Tokeni(znak))
         # je li operator?
         # !, !=
         elif znak == '!':
@@ -322,8 +327,9 @@ class C0Parser(Parser):
             print(tip)
             print(varijabla)
             if self >> Tokeni.ASSIGN:
+                var = Varijabla(tip, varijabla)
                 desna = self.expression()
-                return Pridruživanje(tip, varijabla, desna)
+                return Pridruživanje(var, desna)
             else:
                 return Varijabla(tip, varijabla)
         else:
@@ -345,19 +351,25 @@ class C0Parser(Parser):
                 isJednako = True if self.zadnji ** Tokeni.EQ else False
                 desnaStrana = self.expression()
                 return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            #logička operacija
+            elif self >> {Tokeni.LAND, Tokeni.LOR}:
+                operacija = self.zadnji
+                desnaStrana = self.expression()
+                return LogičkaOperacija(lijevaStrana, desnaStrana, operacija)
+            #ternarni operator
+            elif self >> Tokeni.CONDQ:
+                prviUvjet = self.expression()
+                self.pročitaj(Tokeni.CONDDOT)
+                drugiUvjet = self.expression()
+                return TernarniOperator(lijevaStrana, prviUvjet, drugiUvjet)
             else:
                 return lijevaStrana
 
         if self >> Tokeni.IDENTIFIER:
-            #ako nakon njega slijedi pridruživanje, vratit varijablu
             var = self.zadnji
             idući = self.pogledaj()
             print(idući)
-            if idući ** Tokeni.ASSIGN:
-                self.pročitaj(Tokeni.ASSIGN)
-                vrijednost = self.expression()
-                return self.odrediVarijablu(var, vrijednost)
-            elif idući ** Tokeni.OOTV:
+            if idući ** Tokeni.OOTV:
                 self.pročitaj(Tokeni.OOTV)
                 konstruktor_argumenti = []
                 while True:
@@ -387,10 +399,31 @@ class C0Parser(Parser):
                 isJednako = True if self.zadnji ** Tokeni.EQ else False
                 desnaStrana = self.expression()
                 return JednakoRazlicito(var, desnaStrana, isJednako)
+            #je li aritmetički operator iza
+            elif self >> {Tokeni.ZVJ, Tokeni.SLASH, Tokeni.MOD, Tokeni.PLUS, Tokeni.MINUS,
+                    Tokeni.LSHIFT, Tokeni.RSHIFT}:
+                operacija = self.zadnji
+                desnaStrana = self.expression()
+                return BinarnaOperacija(var, desnaStrana, operacija)
+            #je li bitwise operacija iza
+            elif self >> {Tokeni.BITAND, Tokeni.BITEXCLOR, Tokeni.BITOR}:
+                operacija = self.zadnji
+                desnaStrana = self.expression()
+                return BitwiseOperacija(var, desnaStrana, operacija)
+            #logička operacija
+            elif self >> {Tokeni.LAND, Tokeni.LOR}:
+                operacija = self.zadnji
+                desnaStrana = self.expression()
+                return LogičkaOperacija(var, desnaStrana, operacija)
+            #ternarni operator
+            elif self >> Tokeni.CONDQ:
+                prviUvjet = self.expression()
+                self.pročitaj(Tokeni.CONDDOT)
+                drugiUvjet = self.expression()
+                return TernarniOperator(var, prviUvjet, drugiUvjet)
             else:
                 return var
-                        
-        if self >> {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.CHRLIT}:
+        if self >> Tokeni.CHRLIT:
             lijevaStrana = self.zadnji
             #vidi jel operator uspoređivanja iza
             if self >> {Tokeni.LESS, Tokeni.LESSEQ}: 
@@ -405,6 +438,34 @@ class C0Parser(Parser):
                 isJednako = True if self.zadnji ** Tokeni.EQ else False
                 desnaStrana = self.expression()
                 return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            else:
+                return lijevaStrana
+        if self >> {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI}:
+            lijevaStrana = self.zadnji
+            #vidi jel operator uspoređivanja iza
+            if self >> {Tokeni.LESS, Tokeni.LESSEQ}: 
+                isManjeJednako = True if self.zadnji ** Tokeni.LESSEQ else False
+                desnaStrana = self.expression()
+                return ManjeJednako(lijevaStrana, desnaStrana, isManjeJednako)
+            elif self >> {Tokeni.GRT, Tokeni.GRTEQ}:
+                isVeceJednako = True if self.zadnji ** Tokeni.GRTEQ else False
+                desnaStrana = self.expression()
+                return VeceJednako(lijevaStrana, desnaStrana, isVeceJednako)
+            elif self >> {Tokeni.EQ, Tokeni.DISEQ}:
+                isJednako = True if self.zadnji ** Tokeni.EQ else False
+                desnaStrana = self.expression()
+                return JednakoRazlicito(lijevaStrana, desnaStrana, isJednako)
+            #je li aritmetički operator iza
+            elif self >> {Tokeni.ZVJ, Tokeni.SLASH, Tokeni.MOD, Tokeni.PLUS, Tokeni.MINUS,
+                    Tokeni.LSHIFT, Tokeni.RSHIFT}:
+                operacija = self.zadnji
+                desnaStrana = self.expression()
+                return BinarnaOperacija(lijevaStrana, desnaStrana, operacija)
+            #je li bitwise operacija iza
+            elif self >> {Tokeni.BITAND, Tokeni.BITEXCLOR, Tokeni.BITOR}:
+                operacija = self.zadnji
+                desnaStrana = self.expression()
+                return BitwiseOperacija(lijevaStrana, desnaStrana, operacija)
             else:
                 return lijevaStrana
         #unarni operatori
@@ -425,7 +486,7 @@ class C0Parser(Parser):
             #prvi član pravila nije expression
             self.greška()
             #može se dogoditi i da stoji samo jedan izraz, mora se i to obraditi
-
+    #TODO: prebaciti lijevo asocirane binarne operatore razinu niže, i unarne operatore još razinu niže
 
     def start(self):
         naredbe = [self.stmt()]
@@ -436,36 +497,38 @@ class C0Parser(Parser):
 
 class Program(AST('naredbe')):
     def vrijednost(self):
-        imena = {}
+        imena = ChainMap()
+        vrijednosti = ChainMap()
         for naredba in self.naredbe: 
             print (naredba.vrijednost())
-            naredba.vrijednost()
+            naredba.vrijednost(imena, vrijednosti)
         return imena
 
 class Varijabla(AST('tip ime')):
-    def vrijednost(izraz):
-        return
+    def vrijednost(izraz, imena, vrijednosti):
+        imena[izraz.ime] = izraz.tip
+        return izraz.ime
 
-class Pridruživanje(AST('tip ime vrijedn')):
-    def vrijednost(izraz):
+class Pridruživanje(AST('varijabla vrijedn')):
+    def vrijednost(izraz, imena, vrijednosti):
 
-        if izraz.tip == 'int':
+        if izraz.varijabla.tip == 'int':
             if (not isinstance(izraz.vrijedn.vrijednost(), int)):
                 raise ValueError("Nekompatibilni tipovi")
 
-        elif izraz.tip == 'char':
+        elif izraz.varijabla.tip == 'char':
             if (not isinstance(izraz.vrijedn.vrijednost(), str) or len(izraz.vrijedn.vrijednost()) != 1):
                 raise ValueError("Nekompatibilni tipovi")
 
-        elif izraz.tip == 'bool':
+        elif izraz.varijabla.tip == 'bool':
             if (not isinstance(izraz.vrijedn.vrijednost(), bool)):
                 raise ValueError("Nekompatibilni tipovi")
 
-        elif izraz.tip == 'string':
+        elif izraz.varijabla.tip == 'string':
             if (not isinstance(izraz.vrijedn.vrijednost(), str)):
                 raise ValueError("Nekompatibilni tipovi")
         
-        #mem[self.ime.sadržaj] = self.pridruženo.vrijednost(mem)
+        vrijednosti[izraz.varijabla] = izraz.vrijedn
 
 #ovdje svugdje provjera jesu jednake strane i provjera šta je desna strana
 class ManjeJednako(AST('lijevaStrana desnaStrana isManjeJednako')):
@@ -477,6 +540,22 @@ class VeceJednako(AST('lijevaStrana desnaStrana isVeceJednako')):
         return
 
 class JednakoRazlicito(AST('lijevaStrana desnaStrana isJednako')):
+    def vrijednost(izraz):
+        return
+
+class BinarnaOperacija(AST('var desnaStrana operacija')):
+    def vrijednost(izraz):
+        return
+
+class BitwiseOperacija(AST('var desnaStrana operacija')):
+    def vrijednost(izraz):
+        return
+
+class LogičkaOperacija(AST('lijevaStrana desnaStrana operacija')):
+    def vrijednost(izraz):
+        return
+
+class TernarniOperator(AST('lijevaStrana prviUvjet drugiUvjet')):
     def vrijednost(izraz):
         return
 
@@ -512,7 +591,22 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  a(6); char c = 'a'; a('b'); 3 < 5; a >= 10; a == true; b != false;"
+    # ulaz = r"""NULL; !true; ~5;  -5; int a = 2;  a(6); char c = 'a'; a('b'); 3 < 5; 
+    #         a >= 10; a == true; b != false;
+    #         a+5;
+    #         a & 4;
+    #         4&a;
+    #         5+a;
+    #         true && a;
+    #         a || false;
+    #         true ? true : false;
+    #         a == true ? a : false;"""
+    ulaz = r"""
+       
+        int a = 4;
+        a = 5;
+    """
+
     #vrati ovo    
     #print (ulaz)
     #lista = list(Lekser(ulaz))

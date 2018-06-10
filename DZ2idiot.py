@@ -35,8 +35,8 @@ class Tokeni(enum.Enum):
     TOCKA, STRELICA, SLASH, MOD, PLUS, LSHIFT, RSHIFT = '.', '->', '/', '%', '+', '<<', '>>'
     LESS, LESSEQ, GRTEQ, GRT, EQ, DISEQ, BITAND, BITEXCLOR, BITOR = '<', '<=', '>=', '>', '==', '!=', '&', '^', '|'
     LAND, LOR, CONDQ, CONDDOT = '&&', '||', '?', ':'
-    #operatori pridruzivanja bez jednakosti!!!
-    PLUSEQ, MINUSEQ, ZVJEQ, SLASHEQ, MODEQ, LSHIFTEQ, RSHIFTEQ, ASSIGN= '+=', '-=', '*=', '/=', '%=', '<<=', '>>=', '='
+    #operatori pridruzivanja
+    PLUSEQ, MINUSEQ, ZVJEQ, SLASHEQ, MODEQ, LSHIFTEQ, RSHIFTEQ, ASSIGN = '+=', '-=', '*=', '/=', '%=', '<<=', '>>=', '='
     ANDEQ, POTEQ, CRTAEQ = '&=', '^=', '|='
     #postfiksni operatori
     DECR, INCR = '--', '++'
@@ -45,29 +45,29 @@ class Tokeni(enum.Enum):
     QUOTE, DBLQUOTE, ESCSLASH = '\'', '\"', '\\'
     #komentari
     COMMENT, COM_BEGIN, COM_END = '//', '/*', '*/'
+    #tipovi podataka
+    INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
     class IDENTIFIER(Token):
         def vrijednost(self): 
-            p = re.compile('^[A-Za-z_]\w*$')
-            if (p.match(self.sadržaj) is None):
-                raise RuntimeError("Neispravni identifikator")
             return str(self.sadržaj) #isprobati još?
-
     class DECIMALNI(Token):
-        def vrijednost(self): return int(self.sadržaj)
+        def vrijednost(self): 
+            return int(self.sadržaj)
     class HEKSADEKADSKI(Token):
         def vrijednost(self):
-            p = re.compile('^0[xX][0-9a-fA-F]+$')
-            if (p.match(self.sadržaj) is None):
-                raise RuntimeError("Neispravan heksadekadski broj")
             return hex(self.sadržaj) #isprobati!!
     class CHRLIT(Token):
         def vrijednost(self):
             return self.sadržaj #testiraj jel 'znak'
     class STRLIT(Token):
         def vrijednost(self):
-            return self.sadržaj#testiraj jel "string"
+            return self.sadržaj[1 : len(self.sadržaj) - 1]#testiraj jel "string"
     class LIBLIT(Token):
         def vrijednost(self):
             return self.sadržaj#testiraj jel <string>
-
-
+    class BOOLEAN(Token):
+        def vrijednost(self):
+            return self.sadržaj == 'true'
+    class NULL(Token):
+        def vrijednost(self):
+            return None

@@ -1,6 +1,7 @@
 
 from string import hexdigits
 from pj import *
+from collections import ChainMap
 from DZ2idiot import *
 
 separatori = [Tokeni.OOTV, Tokeni.OZATV, Tokeni.UOTV, Tokeni.UZATV, Tokeni.VOTV, Tokeni.VZATV,
@@ -9,6 +10,24 @@ escapeovi = [Tokeni.NRED, Tokeni.NTAB, Tokeni.NVERTTAB, Tokeni.BACKSP, Tokeni.RE
      Tokeni.ALERT,  Tokeni.QUOTE, Tokeni.DBLQUOTE, Tokeni.ESCSLASH]
 separatoriZnakovi = '()[]{},;'
 escapeZnakovi = ['\n', '\t', '\v', '\b', '\r', '\f', '\a', '\'', '\"', '\\']
+escapeChars = ['n', 't', 'v', 'b', 'r', 'f', 'a', "'", '"', '\\']
+tipoviPodataka = {'int', 'bool', 'char', 'string'}
+#ESCAPE ZNAKOVE VIDI TREBAS LI ZASEBNO
+
+#rezervirane riječi
+Void = Token(Tokeni.IDENTIFIER, 'void')
+Struct = Token(Tokeni.IDENTIFIER, 'struct')
+Typedef = Token(Tokeni.IDENTIFIER, 'typedef')
+If = Token(Tokeni.IDENTIFIER, 'if')
+Else = Token(Tokeni.IDENTIFIER, 'else')
+While = Token(Tokeni.IDENTIFIER, 'while')
+For = Token(Tokeni.IDENTIFIER, 'for')
+Continue = Token(Tokeni.IDENTIFIER, 'continue')
+Break = Token(Tokeni.IDENTIFIER, 'break')
+Return = Token(Tokeni.IDENTIFIER, 'return')
+Assert = Token(Tokeni.IDENTIFIER, 'assert')
+Alloc = Token(Tokeni.IDENTIFIER, 'alloc')
+Alloc_array = Token(Tokeni.IDENTIFIER, 'alloc_array')
 
 def isxdigit(znak):
     """Provjerava je li znak hex znamenka"""
@@ -40,18 +59,41 @@ def isLChar(znak):
 
 def Lekser(kôd):
     lex = Tokenizer(kôd)
+    citamString = False
 
     for znak in iter(lex.čitaj, ''):
         print("znak")
         print(znak)
-        if znak == ' ': 
+        print(citamString)
+        if (citamString):
+            if znak == '\\':
+                idući = lex.čitaj()
+                if (idući not in escapeChars):
+                    lex.greška("Neispravan string")
+            elif isNChar(znak):
+                continue
+            elif znak == '"':
+                citamString = False
+                print (lex.sadržaj)
+                print (lex.sadržaj[1 : len(lex.sadržaj) - 1])
+                yield lex.token(Tokeni.STRLIT)
+            else:
+                lex.greška("Neispravan string")
+        elif znak == ' ': 
             lex.token(E.PRAZNO) #enter i tabulator su nam tokeni
-        if znak == '': lex.token(E.KRAJ)
-                
+        elif znak == '"': #prelazimo u stanje citanja stringa
+            citamString = True
+            continue
         elif znak.isalpha() or znak == '_':
             # onda je identifier
-            lex.plus(isidentifier)
-            yield lex.token(Tokeni.IDENTIFIER)
+            lex.zvijezda(identifikator)
+            print("identifikator....")
+            print(lex.sadržaj)
+            if lex.sadržaj in {'true', 'false'}: yield lex.token(Tokeni.BOOLEAN)
+            elif (lex.sadržaj == 'NULL'): yield lex.token(Tokeni.NULL)
+            elif (lex.sadržaj in tipoviPodataka): yield lex.token(Tokeni(lex.sadržaj))
+            else:
+                yield lex.token(Tokeni.IDENTIFIER)
         elif znak.isdigit(): 
             # onda je dec ili hex
             if znak == '0': 
@@ -71,8 +113,8 @@ def Lekser(kôd):
                 # onda je dec
                 lex.zvijezda(str.isdigit)
                 yield lex.token(Tokeni.DECIMALNI)
-        # TODO: strlit se MORA prepoznavati u parseru!!!
-        # TODO: chrlit se MORA prepoznavati u parseru!!!
+
+        # TODO: liblit se MORA prepoznavati u parseru!!!
         # je li chrlit?
         elif znak == "'":
             idući = lex.čitaj()
@@ -238,9 +280,216 @@ def Lekser(kôd):
         elif znak == ':':
             yield lex.token(Tokeni.CONDDOT)
         
+#globalni spremnik korištenih varijabli u programu
+globalneVarijable = ChainMap()
+globalneVarijableTipovi = ChainMap()
 
+osnovniIzrazi = {Tokeni.BOOLEAN, Tokeni.HEKSADEKADSKI, Tokeni.DECIMALNI,
+                Tokeni.STRLIT, Tokeni.CHRLIT, Tokeni.NULL}
+class C0Parser(Parser):
+
+    def naredba(self):
+        print(" u naredbi ")
+        return self.expression()
+
+    def expression(self):
+        print ("u izrazu")
+        print (self.pogledaj())
+
+        if self >> Tokeni.OOTV:
+            u_zagradi = self.expression()
+            self.pročitaj(Tokeni.OZATV)
+            return u_zagradi
+        if self >> osnovniIzrazi:
+            return self.zadnji
+        if self >> Tokeni.IDENTIFIER:
+            #ako nakon njega slijedi pridruživanje, vratit varijablu
+            var = self.zadnji
+            idući = self.pogledaj()
+            if idući ** Tokeni.ASSIGN:
+                self.pročitaj(Tokeni.ASSIGN)
+                vrijednost = self.expression()
+                return self.odrediVarijablu(var, vrijednost)
+            else:
+                print("u else")
+                return self.zadnji
+        #varijable
+        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.CHAR, Tokeni.STRING}:
+            return self.vratiVarijablu()
+        #unarni operatori
+        if self >> Tokeni.USKL:
+            iza = self.expression()
+            print (iza)
+            return Negacija(iza)
+        if self >> Tokeni.TILDA:
+            iza = self.expression()
+            return Tilda(iza)
+        if self >> Tokeni.MINUS:
+            iza = self.expression()
+            return Minus(iza)
+        #if self >> Tokeni.ZVJ:
+        #    #TODO: neam pojma šta ovdje
+        else:
+            #do ovdje su odrađeni svi slučajevi gramatike gdje
+            #prvi član pravila nije expression
+            print("else je u pitanju")
+            #print(self.zadnji)
+            
+            print(self.zadnji)
+            return self.zadnji
+            #if idući
+
+            #može se dogoditi i da stoji samo jedan izraz, mora se i to obraditi
+
+    def start(self):
+        naredbe = [self.naredba()]
+        while not self >> E.KRAJ: 
+            naredbe.append(self.naredba())
+        return Program(naredbe)
+
+    def odrediVarijablu(self, var, vrijednost):
+        ime = var.vrijednost()
+        tip = globalneVarijableTipovi[var]
+
+        if tip == 'int':
+            value = 0
+            if vrijednost is not None:
+                value = vrijednost
+            print(tip)
+            print(ime)
+            print(value)
+            v = Varijabla(tip, ime, value)
+            print(v)
+            return v
+        elif tip == 'bool':
+            value = False
+            if vrijednost is not None:
+                value = vrijednost
+                
+        elif tip == 'char':
+            value = '\0'
+            if vrijednost is not None:
+                value = vrijednost
+        else:
+            value = ""
+            if vrijednost is not None:
+                value = vrijednost
+            
+
+    def vratiVarijablu(self):
+        tip = self.zadnji.tip.name.lower()
+        ime = self.pročitaj(Tokeni.IDENTIFIER)
+        idući = self.pogledaj()
+        print (idući)
+        if idući ** Tokeni.ASSIGN:
+            self.pročitaj(Tokeni.ASSIGN)
+            vrijednost = self.expression()
+        else:
+            if tip == 'int':
+                vrijednost = 0
+            elif tip == 'bool':
+                vrijednost = False
+            elif tip == 'char':
+                vrijednost = '\0'
+            else:
+                vrijednost = ""
+
+        if tip == 'int':
+            globalneVarijableTipovi[ime] = 'int'
+            return Varijabla(tip, ime, vrijednost)
+        #elif tip == 'bool':
+        #    return Varijabla(tip, ime, vrijednost)
+        #elif tip == 'char':
+        #    return Varijabla(tip, ime, vrijednost)
+        #else:
+        #    return Varijabla(tip, ime, vrijednost)
+
+class Program(AST('naredbe')):
+    def vrijednost(self):
+        imena = {}
+        for naredba in self.naredbe: 
+            print (naredba.vrijednost())
+            naredba.vrijednost()
+        return imena
+
+class Varijabla(AST('tip ime vrijedn')):
+    def vrijednost(izraz):
+
+        
+        if izraz.tip == 'int':
+            if (not isinstance(izraz.vrijedn.vrijednost, int)):
+                raise ValueError("Nekompatibilni tipovi")
+
+        elif izraz.tip == 'char':
+            if (not isinstance(izraz.vrijedn.vrijednost, str) or len(izraz.vrijedn.vrijednost) != 1):
+                raise ValueError("Nekompatibilni tipovi")
+
+        elif izraz.tip == 'bool':
+            if (not isinstance(izraz.vrijedn.vrijednost, bool)):
+                raise ValueError("Nekompatibilni tipovi")
+
+        elif izraz.tip == 'string':
+            if (not isinstance(izraz.vrijedn.vrijednost, str)):
+                raise ValueError("Nekompatibilni tipovi")
+
+        if (izraz.ime in globalneVarijable):
+            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
+            povratnaVrijednost = globalneVarijable[izraz.ime]
+
+        print(isinstance(izraz.vrijedn.vrijednost(), izraz.tip))
+        if (izraz.vrijedn.vrijednost() is not izraz.tip):
+            raise ValueError("Nekompatibilni tipovi")
+
+        if (izraz.tip != 'x'):
+            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
+        elif (izraz.ime in globalneVarijable):
+            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
+
+        try: return globalneVarijable[izraz.ime]
+        except KeyError: izraz.ime.nedeklaracija()
+
+# class IntVarijabla(AST('tip ime vrijedn')):
+#     def vrijednost(izraz):
+#         if (not isinstance(izraz.vrijedn.vrijednost, int)):
+#             raise ValueError("Nekompatibilni tipovi")
+        
+#         if (izraz.ime in globalneVarijableInt):
+#             globalneVarijableInt[izraz.ime] = izraz.vrijedn.vrijednost()
+
+#         try: return globalneVarijableInt[izraz.ime]
+#         except KeyError: izraz.ime.nedeklaracija()
+
+
+class Negacija(AST('iza')):
+    """Negacija izraza."""
+    def vrijednost(izraz):
+        return not izraz.iza.vrijednost()
+
+
+class Tilda(AST('iza')):
+    """Bitwise unary complement"""
+    def vrijednost(izraz):
+        return ~izraz.iza.vrijednost()
+
+class Minus(AST('iza')):
+    def vrijednost(izraz):
+        return - izraz.iza.vrijednost()
 
 if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * -> += <lib\"char  0x23 \n \t \v alo \' ' '\0'"))
-    lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char  0x23 bla_b<<=bl\" ba"))
-    print (*lista)
+    #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
+    #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
+    #ulaz = r'0x23 NULL      '
+    ulaz = r" NULL !true ~5  -5  int a = 2  char c = 'a'   a = 6"
+    #print (ulaz)
+    #lista = list(Lekser(ulaz))
+    #print (*lista)
+    #print (ulaz)
+
+
+    tokeni = list(Lekser(ulaz))
+    print(*tokeni)
+    program = C0Parser.parsiraj(tokeni)
+    print(program)
+    print (program.vrijednost())
+    

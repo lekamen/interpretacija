@@ -127,7 +127,7 @@ def Lekser(kôd):
                 raise RuntimeError("Neispravan chrlit")           
         #je li escape sekvenca ili separator?
         elif znak in escapeZnakovi or znak in separatoriZnakovi:
-            yield Tokeni(znak)
+            yield lex.token(Tokeni(znak))
         # je li operator?
         # !, !=
         elif znak == '!':
@@ -284,13 +284,38 @@ def Lekser(kôd):
 globalneVarijable = ChainMap()
 globalneVarijableTipovi = ChainMap()
 
-osnovniIzrazi = {Tokeni.BOOLEAN, Tokeni.HEKSADEKADSKI, Tokeni.DECIMALNI,
+osnovniIzrazi = {Tokeni.IDENTIFIER, Tokeni.BOOLEAN, Tokeni.HEKSADEKADSKI, Tokeni.DECIMALNI,
                 Tokeni.STRLIT, Tokeni.CHRLIT, Tokeni.NULL}
 class C0Parser(Parser):
 
-    def naredba(self):
+    def stmt(self):
         print(" u naredbi ")
-        return self.expression()
+        #ovdje prvo ispitat jesu tokeni if, while, for, return, assert, error
+        if self >> Tokeni.VOTV:
+            blok = self.stmt()
+            self.pročitaj(Tokeni.VZATV)
+            return blok
+        else:
+            simple = self.simple()
+            self.pročitaj(Tokeni.SEP)
+            return simple
+
+
+    def simple(self):
+        #ostali.....
+        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
+            tip = self.zadnji
+            varijabla = self.pročitaj(Tokeni.IDENTIFIER)
+            print("Jesmo ovdje")
+            print(tip)
+            print(varijabla)
+            if self >> Tokeni.ASSIGN:
+                desna = self.expression()
+                return Pridruživanje(tip, varijabla, desna)
+            else:
+                return Varijabla(tip, varijabla)
+        else:
+            return self.expression()
 
     def expression(self):
         print ("u izrazu")
@@ -302,23 +327,6 @@ class C0Parser(Parser):
             return u_zagradi
         if self >> osnovniIzrazi:
             return self.zadnji
-        if self >> Tokeni.IDENTIFIER:
-            #ako nakon njega slijedi pridruživanje, vratit varijablu
-            var = self.zadnji
-            idući = self.pogledaj()
-            if idući ** Tokeni.ASSIGN:
-                self.pročitaj(Tokeni.ASSIGN)
-                vrijednost = self.expression()
-                return self.odrediVarijablu(var, vrijednost)
-            else:
-                print("u else")
-                return var
-        #varijable
-        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.CHAR, Tokeni.STRING}:
-            var = self.vratiVarijablu()
-            print ("prije vracanja var")
-            print (var)
-            return var
         #unarni operatori
         if self >> Tokeni.USKL:
             iza = self.expression()
@@ -339,68 +347,11 @@ class C0Parser(Parser):
             #može se dogoditi i da stoji samo jedan izraz, mora se i to obraditi
 
     def start(self):
-        naredbe = [self.naredba()]
+        naredbe = [self.stmt()]
         while not self >> E.KRAJ:
             print ("jel ovo zadnje")
-            naredbe.append(self.naredba())
+            naredbe.append(self.stmt())
         return Program(naredbe)
-
-    def odrediVarijablu(self, var, vrijednost):
-        ime = var.vrijednost()
-        tip = globalneVarijableTipovi[var]
-
-        if tip == 'int':
-            value = 0
-            if vrijednost is not None:
-                value = vrijednost
-        elif tip == 'bool':
-            value = False
-            if vrijednost is not None:
-                value = vrijednost
-                
-        elif tip == 'char':
-            value = '\0'
-            if vrijednost is not None:
-                value = vrijednost
-        else:
-            value = ""
-            if vrijednost is not None:
-                value = vrijednost
-
-        return Varijabla(tip, var, value)
-            
-
-    def vratiVarijablu(self):
-        tip = self.zadnji.tip.name.lower()
-        ime = self.pročitaj(Tokeni.IDENTIFIER)
-        idući = self.pogledaj()
-        print (idući)
-        if idući ** Tokeni.ASSIGN:
-            self.pročitaj(Tokeni.ASSIGN)
-            vrijednost = self.expression()
-        else:
-            if tip == 'int':
-                vrijednost = 0
-            elif tip == 'bool':
-                vrijednost = False
-            elif tip == 'char':
-                vrijednost = '\0'
-            else:
-                vrijednost = ""
-
-        globalneVarijable[ime] = vrijednost
-        if tip == 'int':
-            globalneVarijableTipovi[ime] = 'int'
-            return Varijabla(tip, ime, vrijednost)
-        elif tip == 'bool':
-            globalneVarijableTipovi[ime] = 'bool'
-            return Varijabla(tip, ime, vrijednost)
-        elif tip == 'char':
-            globalneVarijableTipovi[ime] = 'char'
-            return Varijabla(tip, ime, vrijednost)
-        else:
-            globalneVarijableTipovi[ime] = 'string'
-            return Varijabla(tip, ime, vrijednost)
 
 class Program(AST('naredbe')):
     def vrijednost(self):
@@ -410,8 +361,13 @@ class Program(AST('naredbe')):
             naredba.vrijednost()
         return imena
 
-class Varijabla(AST('tip ime vrijedn')):
+class Varijabla(AST('tip ime')):
     def vrijednost(izraz):
+        return
+
+class Pridruživanje(AST('tip ime vrijedn')):
+    def vrijednost(izraz):
+
         if izraz.tip == 'int':
             if (not isinstance(izraz.vrijedn.vrijednost(), int)):
                 raise ValueError("Nekompatibilni tipovi")
@@ -427,12 +383,9 @@ class Varijabla(AST('tip ime vrijedn')):
         elif izraz.tip == 'string':
             if (not isinstance(izraz.vrijedn.vrijednost(), str)):
                 raise ValueError("Nekompatibilni tipovi")
+        
+        #mem[self.ime.sadržaj] = self.pridruženo.vrijednost(mem)
 
-        if (izraz.ime in globalneVarijable):
-            globalneVarijable[izraz.ime] = izraz.vrijedn.vrijednost()
-
-        try: return globalneVarijable[izraz.ime]
-        except KeyError: izraz.ime.nedeklaracija()
 
 
 class Negacija(AST('iza')):
@@ -455,7 +408,8 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r" NULL !true ~5  -5  int a = 2  char c = 'a'  a = 4"
+    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  char c = 'a';"
+    #vrati ovo    
     #print (ulaz)
     #lista = list(Lekser(ulaz))
     #print (*lista)
@@ -466,5 +420,5 @@ if __name__ == '__main__':
     print(*tokeni)
     program = C0Parser.parsiraj(tokeni)
     print(program)
-    print (program.vrijednost())
+    #print (program.vrijednost())
     

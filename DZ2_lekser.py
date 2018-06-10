@@ -315,7 +315,13 @@ class C0Parser(Parser):
 
     def simple(self):
         #ostali.....
-        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
+        if self >> Tokeni.IDENTIFIER:
+            trenutni = self.zadnji
+            sljedeći = self.čitaj()
+            if sljedeći ** Tokeni.INCR:
+                Inkrement(trenutni)
+                
+        elif self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
             tip = self.zadnji
             varijabla = self.pročitaj(Tokeni.IDENTIFIER)
             print("Jesmo ovdje")
@@ -328,6 +334,11 @@ class C0Parser(Parser):
                 return Varijabla(tip, varijabla)
         else:
             return self.expression()
+    def leftvalue(self):
+        if self >> Tokeni.IDENTIFIER:
+            trenutni = self.zadnji
+            
+
 
     def expression(self):
         print ("u izrazu")
@@ -353,11 +364,7 @@ class C0Parser(Parser):
             var = self.zadnji
             idući = self.pogledaj()
             print(idući)
-            if idući ** Tokeni.ASSIGN:
-                self.pročitaj(Tokeni.ASSIGN)
-                vrijednost = self.expression()
-                return self.odrediVarijablu(var, vrijednost)
-            elif idući ** Tokeni.OOTV:
+            if idući ** Tokeni.OOTV:
                 self.pročitaj(Tokeni.OOTV)
                 konstruktor_argumenti = []
                 while True:
@@ -372,8 +379,8 @@ class C0Parser(Parser):
                         zarez = self.pogledaj()
                         if zarez ** Tokeni.ZAREZ:
                             self.pročitaj(Tokeni.ZAREZ)
-                        print("daddy attention" + str(zarez))
                 return Konstrukcija(var, konstruktor_argumenti)
+
             #vidi jel operator uspoređivanja iza
             if self >> {Tokeni.LESS, Tokeni.LESSEQ}: 
                 isManjeJednako = True if self.zadnji ** Tokeni.LESSEQ else False
@@ -434,17 +441,20 @@ class C0Parser(Parser):
             naredbe.append(self.stmt())
         return Program(naredbe)
 
+    def varijabla(self):
+        if self >> 
+
 class Program(AST('naredbe')):
     def vrijednost(self):
-        imena = {}
+        imena = ChainMap()
         for naredba in self.naredbe: 
-            print (naredba.vrijednost())
+            print (naredba.vrijednost(imena))
             naredba.vrijednost()
         return imena
 
-class Varijabla(AST('tip ime')):
-    def vrijednost(izraz):
-        return
+class Varijabla(AST('ime')):
+    def vrijednost(izraz, imena):
+        return izraz.ime
 
 class Pridruživanje(AST('tip ime vrijedn')):
     def vrijednost(izraz):
@@ -499,10 +509,19 @@ class Konstrukcija(AST('objekt argumenti')):
     # zasad konstruktor podržava samo primitivne tipove
     def vrijednost(izraz):
         o = izraz.objekt.vrijednost()
+        print("OVDJE SU MI OČI")
+        print(o)
+
         a = izraz.argumenti
         for argument in a:
             o = argument.vrijednost()
+            break
         return o
+class Inkrement(AST('broj')):
+    """Inkrement broja"""
+    def vrijednost(izraz):
+        incrementee = izraz.broj.vrijednost() 
+        return incrementee + 1
         
 
 
@@ -512,7 +531,7 @@ if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
     #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
     #ulaz = r'0x23 NULL      '
-    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  a(6); char c = 'a'; a('b'); 3 < 5; a >= 10; a == true; b != false;"
+    ulaz = r"NULL; !true; ~5;  -5; int a = 2;  a(6, 7); char c = 3; a('b'); 3 < 5; a >= 10; a == true; b != false; a++;"
     #vrati ovo    
     #print (ulaz)
     #lista = list(Lekser(ulaz))

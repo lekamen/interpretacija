@@ -8,19 +8,16 @@ separatoriZnakovi = '()[]{},;'
 escapeZnakovi = ['\n', '\t', '\v', '\b', '\r', '\f', '\a', '\'', '\"', '\\']
 escapeChars = ['n', 't', 'v', 'b', 'r', 'f', 'a', "'", '"', '\\']
 tipoviPodataka = {'int', 'bool', 'char', 'string'}
+naredbe = {'if', 'else', 'while', 'for', 'return', 'assert', 'error'}
 assignOperators = {Tokeni.PLUSEQ, Tokeni.MINUSEQ, Tokeni.ZVJEQ, Tokeni.SLASHEQ, Tokeni.MODEQ, Tokeni.LSHIFTEQ, Tokeni.RSHIFTEQ, Tokeni.ASSIGN, Tokeni.ANDEQ, Tokeni.POTEQ, Tokeni.CRTAEQ}
+
 #ESCAPE ZNAKOVE VIDI TREBAS LI ZASEBNO
 
 #rezervirane riječi
 Void = Token(Tokeni.IDENTIFIER, 'void')
 Struct = Token(Tokeni.IDENTIFIER, 'struct')
 Typedef = Token(Tokeni.IDENTIFIER, 'typedef')
-If = Token(Tokeni.IDENTIFIER, 'if')
-Else = Token(Tokeni.IDENTIFIER, 'else')
-While = Token(Tokeni.IDENTIFIER, 'while')
-For = Token(Tokeni.IDENTIFIER, 'for')
 Continue = Token(Tokeni.IDENTIFIER, 'continue')
-Break = Token(Tokeni.IDENTIFIER, 'break')
 Return = Token(Tokeni.IDENTIFIER, 'return')
 Assert = Token(Tokeni.IDENTIFIER, 'assert')
 Alloc = Token(Tokeni.IDENTIFIER, 'alloc')
@@ -76,24 +73,14 @@ def Lekser(kôd):
         elif znak == '"': #prelazimo u stanje citanja stringa
             citamString = True
             continue
-        elif znak == 'i':
-            sljedeći = lex.pogledaj()
-            if sljedeći == 'f':
-                # probaj pročitati if
-                lex.čitaj()
-                ssljedeći = lex.pogledaj()
-                if ssljedeći.isspace():
-                    yield lex.token(Tokeni.IF)
-                else:
-                # ako ne uspije, vrati glavu nazad
-                    lex.vrati()
-
         elif znak.isalpha() or znak == '_':
             # onda je identifier
             lex.zvijezda(identifikator)
             if lex.sadržaj in {'true', 'false'}: yield lex.token(Tokeni.BOOLEAN)
             elif (lex.sadržaj == 'NULL'): yield lex.token(Tokeni.NULL)
             elif (lex.sadržaj in tipoviPodataka): yield lex.token(Tokeni(lex.sadržaj))
+            elif (lex.sadržaj in naredbe): yield lex.token(Tokeni(lex.sadržaj))
+            elif (lex.sadržaj == 'break'): yield lex.token(Tokeni.BREAK)
             else:
                 yield lex.token(Tokeni.IDENTIFIER)
         elif znak.isdigit(): 
@@ -110,7 +97,6 @@ def Lekser(kôd):
                     
                 else:
                     yield lex.token(Tokeni.DECIMALNI)
-                        
             else:
                 lex.pogledaj()
                 # onda je dec
@@ -296,10 +282,38 @@ class C0Parser(Parser):
     def stmt(self):
         print(" u naredbi ")
         #ovdje prvo ispitat jesu tokeni if, while, for, return, assert, error
+        #ovdje dodatii continue!!
+        if self >> Tokeni.IF:
+            self.pročitaj(Tokeni.OOTV)
+            uvjet = self.expression()
+            self.pročitaj(Tokeni.OZATV)
+            tijeloIf = self.stmt()
+            idući = self.pogledaj()
+            if idući ** Tokeni.ELSE:
+                self.pročitaj(Tokeni.ELSE)
+                tijeloElse = self.stmt()
+                return IfElse(uvjet, tijeloIf, tijeloElse)
+            else:
+                return If(uvjet, tijeloIf)
+        #if self >> Tokeni.WHILE
+        if self >> Tokeni.FOR:
+            self.pročitaj(Tokeni.OOTV)
+            deklaracija = self.simple()
+            self.pročitaj(Tokeni.SEP)
+            uvjet = self.expression()
+            self.pročitaj(Tokeni.SEP)
+            inkrement = self.simple()
+            self.pročitaj(Tokeni.OZATV)
+            tijeloFor = self.stmt()
+            return For(deklaracija, uvjet, inkrement, tijeloFor)
+        if self >> Tokeni.BREAK:
+            br = self.zadnji
+            self.pročitaj(Tokeni.SEP)
+            return br
         if self >> Tokeni.VOTV:
-            blok = self.stmt()
-            self.pročitaj(Tokeni.VZATV)
-            return blok
+            blok = []
+            while not self >> Tokeni.VZATV: blok.append(self.stmt())
+            return Blok(blok)
         else:
             simple = self.simple()
             self.pročitaj(Tokeni.SEP)
@@ -308,6 +322,16 @@ class C0Parser(Parser):
 
     def simple(self):
         #ostali.....
+        # if self >> Tokeni.IDENTIFIER:
+        #     var = self.zadnji
+        #     idući = self.pogledaj()
+        #     #ako je ++, --, op pridruživanja
+        #     #TODO: ovo nije ispravno
+        #     if idući ** Tokeni.ASSIGN:
+        #         self.pročitaj(Tokeni.ASSIGN)
+        #         vrijednost = self.expression()
+        #         return Pridruživanje(var, vrijednost)
+
         if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
             tip = self.zadnji
             varijabla = self.pročitaj(Tokeni.IDENTIFIER)
@@ -317,7 +341,7 @@ class C0Parser(Parser):
             if self >> Tokeni.ASSIGN:
                 var = Varijabla(tip, varijabla)
                 desna = self.expression()
-                return Pridruživanje(var, desna)
+                return Deklaracija(var, desna)
             else:
                 return Varijabla(tip, varijabla)
         else:
@@ -334,7 +358,6 @@ class C0Parser(Parser):
                 prviUvjet = self.expression()
                 self.pročitaj(Tokeni.CONDDOT)
                 drugiUvjet = self.expression()
-                #možda ovdje promijenit jer je drukčija asocijativnost !?
                 trenutni = TernarniOperator(trenutni, prviUvjet, drugiUvjet)
             else: return trenutni
 
@@ -428,12 +451,14 @@ class C0Parser(Parser):
             if self >> assignOperators:
                 operacija = self.zadnji
                 trenutni = Assignment(trenutni, self.expression(), operacija)
-            else: return trenutni
+            else: break
         while True:
             if self >> Tokeni.INCR:
                 trenutni = Inkrement(trenutni)
             elif self >> Tokeni.DECR:
                 trenutni = Dekrement(trenutni)
+            else: break
+        return trenutni
 
 
     def unaries(self):
@@ -469,147 +494,210 @@ class C0Parser(Parser):
         return Program(naredbe)
 
 class Program(AST('naredbe')):
-    def vrijednost(self):
+    def izvrši(self):
         tipovi = ChainMap()
         vrijednosti = ChainMap()
         rezultati = []
         for naredba in self.naredbe: 
-            rezultati.append(naredba.vrijednost(tipovi, vrijednosti))
-        return tipovi, vrijednosti, rezultati
+            rezultati.append(naredba.izvrši(tipovi, vrijednosti))
+
+        print(tipovi, vrijednosti, rezultati)
+
+class If(AST('uvjet naredba')):
+    def izvrši(izraz, imena, vrijednosti):
+        if (izraz.uvjet.istina(imena, vrijednosti)): #ako je vrijednost ovog true, izvršava se tijelo if-a
+            izraz.naredba.izvrši(imena, vrijednosti)
+
+
+class IfElse(AST('uvjet naredbaIf naredbaElse')):
+    def izvrši(izraz, imena, vrijednosti):
+        if (izraz.uvjet.istina(imena, vrijednosti)): #ako je vrijednost ovog true, izvršava se tijelo if-a
+            izraz.naredbaIf.izvrši(imena, vrijednosti)
+        else:
+            izraz.naredbaElse.izvrši(imena, vrijednosti)
+
+class Blok(AST('blok')):
+    def izvrši(izraz, imena, vrijednosti):
+        #izvrši svaku od naredbi u bloku
+        for i in range(0, len(izraz.blok)):
+            izraz.blok[i].izvrši(imena, vrijednosti)
+
+#step statement may not be a declaration
+#for (s1; e; s2) s3
+#s1 je assignment ili deklaracija varijable - prvo
+#drugo, evaluiiraj e: ako je istina, izvrši tijelo s3,
+#pa onda izvrši s2 - step expression -> ovo ne smije biti deklaracija
+#pa onda opet evaluiraj e
+#s1 i s3 mogu biti prazne
+#scope.. možda u bloku {} !?!?
+#TODO: break uvesti kao token, u lekser i u parser
+class For(AST('s1 e s2 s3')):
+    def izvrši(izraz, imena, vrijednosti):
+
+        #TODO: ubaci kasnije provjeru kad s1 i s2 nisu zadani
+        deklaracija = izraz.s1.izvrši(imena, vrijednosti) #!?
+        print(deklaracija)
+
+        print(izraz.e.istina(imena, vrijednosti))
+        while (izraz.e.istina(imena, vrijednosti)):
+            try:
+                izraz.s3.izvrši(imena, vrijednosti)
+                print("izrazs3")
+                izraz.s2.izvrši(imena, vrijednosti)
+            except BreakException: break
+            
 
 class Varijabla(AST('tip ime')):
-    def vrijednost(izraz, imena, vrijednosti):
+    def izvrši(izraz, imena, vrijednosti):
         imena[izraz.ime] = izraz.tip
-        return izraz.ime
+        #svakoj se varijabli daje defaultna vrijednost
+        if izraz.tip ** Tokeni.INT:
+            vrijednosti[izraz.ime] = 0
+        elif izraz.tip ** Tokeni.CHAR:
+            vrijednosti[izraz.ime] = '\0'
+        elif izraz.tip ** Tokeni.STRING:
+            vrijednosti[izraz.ime] = ""
+        elif izraz.tip ** Tokeni.BOOL:
+            vrijednosti[izraz.ime] = False
 
-class Pridruživanje(AST('varijabla vrijedn')):
-    """Pridruživanje u inicijalizaciji varijable. Podržava samo operator '='."""
-    # zasad ne podržava izraze oblika int a = b = 3;
-    # baca nekompatibilne tipove
-    def vrijednost(izraz, imena, vrijednosti):
+class Deklaracija(AST('varijabla vrijedn')):
+    def izvrši(izraz, imena, vrijednosti):
 
-        izraz.varijabla.vrijednost(imena, vrijednosti)
+        izraz.varijabla.izvrši(imena, vrijednosti)
+
+        #vidi da li se evaluirati izraz na lijevoj strani
+        izraz.varijabla.ime.vrijednost(imena, vrijednosti)
+
+        value = izraz.vrijedn.vrijednost(imena, vrijednosti)
+
         if izraz.varijabla.tip ** Tokeni.INT:
-            if (type(izraz.vrijedn.vrijednost(imena, vrijednosti)) is not int):
+            if (type(value) is not int):
                 raise ValueError("Nekompatibilni tipovi")
-            else: 
-                vrijednosti[izraz.varijabla.ime] = izraz.vrijedn
-                return int(vrijednosti[izraz.varijabla.ime].sadržaj)
 
         elif izraz.varijabla.tip ** Tokeni.CHAR:
-            if (not isinstance(izraz.vrijedn.vrijednost(imena, vrijednosti), str) or len(izraz.vrijedn.vrijednost(imena, vrijednosti)) != 1):
+            if (not isinstance(value, str) or len(value) != 1):
                 raise ValueError("Nekompatibilni tipovi")
-            else:
-                vrijednosti[izraz.varijabla.ime] = izraz.vrijedn
-                return izraz.vrijedn.sadržaj[1:-1]
 
         elif izraz.varijabla.tip ** Tokeni.BOOL:
-            if (not isinstance(izraz.vrijedn.vrijednost(imena, vrijednosti), bool)):
+            if (not isinstance(value, bool)):
                 raise ValueError("Nekompatibilni tipovi")
-            else:
-                vrijednosti[izraz.varijabla.ime] = izraz.vrijedn
-                return bool(izraz.vrijedn.sadržaj)
+
 
         elif izraz.varijabla.tip ** Tokeni.STRING:
-            if (not isinstance(izraz.vrijedn.vrijednost(imena, vrijednosti), str)):
+            if (not isinstance(value, str)):
+                raise ValueError("Nekompatibilni tipovi")
+
+        vrijednosti[izraz.varijabla.ime] = value    
+
+class Pridruživanje(AST('identifier vrijedn')):
+    def izvrši(izraz, imena, vrijednosti):
+
+        #vidi da li se evaluirati izraz na lijevoj strani
+        izraz.identifier.vrijednost(imena, vrijednosti)
+        tip = imena[izraz.identifier] #token 
+
+        value = izraz.vrijedn.vrijednost(imena, vrijednosti)
+
+        if tip ** Tokeni.INT:
+            if (type(value) is not int):
                 raise ValueError("Nekompatibilni tipovi")
             else:
-                vrijednosti[izraz.varijabla.ime] = izraz.vrijedn
-                return izraz.vrijedn.sadržaj
+                vrijednosti[izraz.identifier] = value
+
+        elif tip ** Tokeni.CHAR:
+            if (not isinstance(value, str) or len(value) != 1):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                vrijednosti[izraz.identifier] = value
+
+        elif tip ** Tokeni.BOOL:
+            if (not isinstance(value, bool)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                vrijednosti[izraz.identifier] = value
+
+        elif tip ** Tokeni.STRING:
+            if (not isinstance(value, str)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                vrijednosti[izraz.identifier] = value
 
 class Assignment(AST('lijevaStrana desnaStrana operator')):
-    """Pridruživanje van inicijalizacije varijabli. Podržava sve operatore pridruživanja i njihovo ulančavanje."""
-    def vrijednost(izraz, imena, vrijednosti):
+    """Pridruživanje van inicijalizacije varijabli. Podržava sve operatore pridruživanja"""
+    def izvrši(izraz, imena, vrijednosti):
 
-        if (izraz.lijevaStrana in imena):
-            lijevi = vrijednosti[izraz.lijevaStrana].vrijednost(imena, vrijednosti)
-            print("prvi if")
-        else:
-            lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
-            print("prvi else")
-
-        if (izraz.desnaStrana in imena):
-            desni = vrijednosti[izraz.desnaStrana].vrijednost(imena, vrijednosti)
-            print("drugi if")
-        else:
-            desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
-            print("drugi else")
+        lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+        desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
 
         print(isinstance(lijevi, int))
         print(isinstance(desni, int))
+
         if (isinstance(lijevi, int)):
             if (not isinstance(desni, int)):
                 raise ValueError("Nekompatibilni tipovi")
             else: 
-                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti)
-                return int(vrijednosti[izraz.lijevaStrana].sadržaj)
+                print (izraz.lijevaStrana, desni, izraz.operator, vrijednosti)
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, True)
+                return vrijednosti[izraz.lijevaStrana]
 
-        #elif (isinstance(lijevi, str) and len(lijevi) == 1):
-        #    if (not (isinstance(lijevi, str) and len(lijevi) == 1)):
-        #        raise ValueError("Nekompatibilni tipovi")
-        #    else:
-        #        Assignment.pridruži(vrijednosti[izraz.lijevaStrana.ime], desni, izraz.operator)
-        #        return vrijednosti[izraz.lijevaStrana.ime][1:-1]
+        elif (isinstance(lijevi, str) and len(lijevi) == 1):
+            if (not (isinstance(lijevi, str) and len(lijevi) == 1)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
+                return vrijednosti[izraz.lijevaStrana.ime][1:-1]
 
-        #elif isinstance(lijevi, bool):
-        #    if (not isinstance(desni, bool)):
-        #        raise ValueError("Nekompatibilni tipovi")
-        #    else:
-        #        Assignment.pridruži(vrijednosti[izraz.lijevaStrana.ime], desni, izraz.operator)
-        #        return bool(vrijednosti[izraz.lijevaStrana.ime])
+        elif isinstance(lijevi, bool):
+            if (not isinstance(desni, bool)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
+                return bool(vrijednosti[izraz.lijevaStrana.ime])
 
-        #elif isinstance(lijevi, str):
-        #    if (not isinstance(desni, str)):
-        #        raise ValueError("Nekompatibilni tipovi")
-        #    else:
-        #        Assignment.pridruži(vrijednosti[izraz.lijevaStrana.ime], vrijednosti[izraz.desnaStrana.ime], izraz.operator)
-        #        return vrijednosti[izraz.lijevaStrana.ime]
+        elif isinstance(lijevi, str):
+            if (not isinstance(desni, str)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
+                return vrijednosti[izraz.lijevaStrana.ime]
         else:
             raise ValueError("Ne znam assignati operande ovog tipa!")
 
-    def pridruži(lijevo, desno, operator, vrijednosti):
-        lijevo_val = int(vrijednosti[lijevo].sadržaj)
+    def pridruži(lijevo, desno, operator, vrijednosti, je_int):
+        lijevo_val = vrijednosti[lijevo]
         if operator ** Tokeni.ASSIGN:
             lijevo_val = desno
-        elif operator ** Tokeni.PLUSEQ:
-            lijevo_val = lijevo_val + desno
-        elif operator ** Tokeni.MINUSEQ:
-            lijevo_val = lijevo_val - desno
-        elif operator ** Tokeni.ZVJEQ:
-            lijevo_val = lijevo_val * desno
-        elif operator ** Tokeni.SLASHEQ:
-            lijevo_val = int(lijevo_val/desno)
-        elif operator ** Tokeni.MODEQ:
-            lijevo_val = lijevo_val % desno
-        elif operator ** Tokeni.LSHIFTEQ:
-            lijevo_val = lijevo_val << desno
-        elif operator ** Tokeni.RSHIFTEQ:
-            lijevo_val = lijevo_val >> desno
-        elif operator ** Tokeni.ANDEQ:
-            lijevo_val = lijevo_val & desno
-        elif operator ** Tokeni.POTEQ:
-            lijevo_val = lijevo_val ^ desno
-        elif operator ** Tokeni.CRTAEQ:
-            lijevo_val = lijevo_val | desno
+        elif je_int:
+            if operator ** Tokeni.PLUSEQ:
+                lijevo_val = lijevo_val + desno
+            elif operator ** Tokeni.MINUSEQ:
+                lijevo_val = lijevo_val - desno
+            elif operator ** Tokeni.ZVJEQ:
+                lijevo_val = lijevo_val * desno
+            elif operator ** Tokeni.SLASHEQ:
+                lijevo_val = int(lijevo_val/desno)
+            elif operator ** Tokeni.MODEQ:
+                lijevo_val = lijevo_val % desno
+            elif operator ** Tokeni.LSHIFTEQ:
+                lijevo_val = lijevo_val << desno
+            elif operator ** Tokeni.RSHIFTEQ:
+                lijevo_val = lijevo_val >> desno
+            elif operator ** Tokeni.ANDEQ:
+                lijevo_val = lijevo_val & desno
+            elif operator ** Tokeni.POTEQ:
+                lijevo_val = lijevo_val ^ desno
+            elif operator ** Tokeni.CRTAEQ:
+                lijevo_val = lijevo_val | desno
+        else: 
+            raise ValueError("Ovaj tip ne podržava operator " + operator.sadržaj + ".")
 
-        lijevo_val = str(lijevo_val)
-        vrijednosti[lijevo] = Token(Tokeni.DECIMALNI, lijevo_val)
-
-
-        
+        #lijevo_val = str(lijevo_val)
+        vrijednosti[lijevo] = lijevo_val
 
 class Comparison(AST('lijevaStrana desnaStrana operator')):
-    def vrijednost(izraz, imena, vrijednosti):
-
-        if (izraz.lijevaStrana in imena):
-            lijevi = vrijednosti[izraz.lijevaStrana].vrijednost(imena, vrijednosti)
-        else:
-            lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
-
-        if (izraz.desnaStrana in imena):
-            desni = vrijednosti[izraz.desnaStrana].vrijednost(imena, vrijednosti)
-        else:
-            desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
+    def istina(izraz, imena, vrijednosti):
+        lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+        desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
 
         #dozvoljeni su samo int i char
         if ((isinstance(lijevi, int) and isinstance(desni, int))
@@ -629,17 +717,10 @@ class Comparison(AST('lijevaStrana desnaStrana operator')):
         
 
 class Equality(AST('lijevaStrana desnaStrana operator')):
-    def vrijednost(izraz, imena, vrijednosti):
+    def istina(izraz, imena, vrijednosti):
 
-        if (izraz.lijevaStrana in imena):
-            lijevi = vrijednosti[izraz.lijevaStrana].vrijednost(imena, vrijednosti)
-        else:
-            lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
-
-        if (izraz.desnaStrana in imena):
-            desni = vrijednosti[izraz.desnaStrana].vrijednost(imena, vrijednosti)
-        else:
-            desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
+        lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+        desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
         
         if (type(lijevi) != type(desni)):
             raise ValueError("neispravno uspoređivanje")
@@ -648,18 +729,15 @@ class Equality(AST('lijevaStrana desnaStrana operator')):
         elif izraz.operator ** Tokeni.DISEQ: return lijevi != desni
         else: assert not 'slučaj'
 
+    def vrijednost(izraz, imena, vrijednosti):
+        return izraz.istina(imena, vrijednosti)
+
 class BinarnaOperacija(AST('lijevaStrana desnaStrana operacija')):
     def vrijednost(izraz, imena, vrijednosti):
         try:
-            if (izraz.lijevaStrana in imena):
-                lijevi = vrijednosti[izraz.lijevaStrana].vrijednost(imena, vrijednosti)
-            else:
-                lijevi = int(izraz.lijevaStrana.vrijednost(imena, vrijednosti))
+            lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+            desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
 
-            if (izraz.desnaStrana in imena):
-                desni = vrijednosti[izraz.desnaStrana].vrijednost(imena, vrijednosti)
-            else:
-                desni = int(izraz.desnaStrana.vrijednost(imena, vrijednosti))
         except ValueError:
             raise ValueError("neispravna binarna operacija")
         
@@ -684,15 +762,8 @@ class BitwiseOperacija(AST('lijevaStrana desnaStrana operacija')):
     def vrijednost(izraz, imena, vrijednosti):
         # pretty much copy paste binarne operacije, uz mini izmjene
         try:
-            if (izraz.lijevaStrana in imena):
-                lijevi = vrijednosti[izraz.lijevaStrana].vrijednost(imena, vrijednosti)
-            else:
-                lijevi = (izraz.lijevaStrana.vrijednost(imena, vrijednosti))
-
-            if (izraz.desnaStrana in imena):
-                desni = vrijednosti[izraz.desnaStrana].vrijednost(imena, vrijednosti)
-            else:
-                desni = (izraz.desnaStrana.vrijednost(imena, vrijednosti))
+            lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+            desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
         except ValueError:
             raise ValueError("neispravna bitwise operacija")
         
@@ -709,17 +780,8 @@ class LogičkaOperacija(AST('lijevaStrana desnaStrana operacija')):
     def vrijednost(izraz, imena, vrijednosti):
         # pretty much copy paste binarne operacije, uz mini izmjene
         try:
-            if (izraz.lijevaStrana in imena):
-                lijevi = vrijednosti[izraz.lijevaStrana].vrijednost(imena, vrijednosti)
-                print("l: " + str(lijevi))
-            else:
-                lijevi = bool(izraz.lijevaStrana.vrijednost(imena, vrijednosti))
-
-            if (izraz.desnaStrana in imena):
-                desni = vrijednosti[izraz.desnaStrana].vrijednost(imena, vrijednosti)
-                print("d: " + str(desni))
-            else:
-                desni = bool(izraz.desnaStrana.vrijednost(imena, vrijednosti))
+            lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+            desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
         except ValueError:
             raise ValueError("neispravna logička operacija")
         
@@ -751,13 +813,17 @@ class Minus(AST('iza')):
 
 class Inkrement(AST('broj')):
     """Postfix inkrement, vraća inkrementirani broj"""
-    def vrijednost(izraz, imena, vrijednosti):
-        return 
+    def izvrši(izraz, imena, vrijednosti):
+        lijevi = izraz.broj.vrijednost(imena, vrijednosti)
+        vrijednosti[izraz.broj] = lijevi + 1
+        return lijevi + 1
 
 class Dekrement(AST('broj')):
     """Postfix dekrement, vraća dekrementirani broj"""
-    def vrijednost(izraz, imena, vrijednosti):
-        return
+    def izvrši(izraz, imena, vrijednosti):
+        lijevi = izraz.broj.vrijednost(imena, vrijednosti)
+        vrijednosti[izraz.broj] = lijevi - 1
+        return lijevi - 1
 
 class Konstrukcija(AST('objekt argumenti')):
     """Konstrukcija objekta s argumentima za konstruktor"""
@@ -785,20 +851,26 @@ if __name__ == '__main__':
     #         a || false;
     #         true ? true : false;
     #         a == true ? a : false;"""
+    #
+    #
     ulaz = r"""
+        int a;
+        char c = 'c';
+        a = 2 + 3;
     
-        int b = 4;
-        int a = 2;
-        int c =3;
-        a+=3;
-        a == 5;
+        a += 4;
+        a = a + 1;
         a++;
-        b-=1 ;
-        b==3;
-        b = b +1;
-
-
+        a--;
     """
+
+    #        a = a + 2;
+
+    #    a += 3;
+       
+    # for(int c = 0; c < 5; c = c + 1)
+    #     if (c == 2)
+    #         break;
     #TODO: konstrukcija ponovno uklopit
     #a * 3 + 5 * 7
     #vrati ovo    
@@ -806,5 +878,7 @@ if __name__ == '__main__':
     print(*tokeni)
     program = C0Parser.parsiraj(tokeni)
     print(program)
-    print(program.vrijednost())
+
+    print (program.izvrši())
+
     

@@ -26,6 +26,8 @@ import re
 # string        -> "schar*"
 # char          -> 'cchar'
 
+class BreakException(Exception): pass
+
 class Tokeni(enum.Enum):
     #separatori
     OOTV, OZATV, UOTV, UZATV, VOTV, VZATV, ZAREZ = '()[]{},'
@@ -49,10 +51,12 @@ class Tokeni(enum.Enum):
     #tipovi podataka
     INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
     # statementi
-    # IF, ELSE, WHILE, FOR, RETURN, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'return', 'assert', 'error'
+    IF, ELSE, WHILE, FOR, RETURN, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'return', 'assert', 'error'
+
     class IDENTIFIER(Token):
         def vrijednost(self, imena, vrijednosti): 
-            return str(self.sadržaj) #isprobati još?
+            try: return vrijednosti[self]
+            except KeyError: self.nedeklaracija()
     class DECIMALNI(Token):
         def vrijednost(self, imena, vrijednosti): 
             return int(self.sadržaj)
@@ -72,5 +76,8 @@ class Tokeni(enum.Enum):
         def vrijednost(self, imena, vrijednosti):
             return self.sadržaj == 'true'
     class NULL(Token):
-        def vrijednost(self):
+        def vrijednost(self, imena, vrijednosti):
             return None
+    class BREAK(Token):
+        def izvrši(self, imena, vrijednosti):
+            raise BreakException

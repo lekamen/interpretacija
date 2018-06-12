@@ -335,9 +335,13 @@ class C0Parser(Parser):
         if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
             tip = self.zadnji
             varijabla = self.pročitaj(Tokeni.IDENTIFIER)
-            print("Jesmo ovdje")
-            print(tip)
-            print(varijabla)
+            #print("Jesmo ovdje")
+            #print(tip)
+            #print(varijabla)
+            if self >> Tokeni.UOTV:
+                size = self.pročitaj(Tokeni.DECIMALNI)
+                self.pročitaj(Tokeni.UZATV)
+                return Polje(tip, varijabla, size)
             if self >> Tokeni.ASSIGN:
                 var = Varijabla(tip, varijabla)
                 desna = self.expression()
@@ -348,8 +352,8 @@ class C0Parser(Parser):
             return self.expression()
 
     def expression(self):
-        print ("u izrazu")
-        print (self.pogledaj())
+        #print ("u izrazu")
+        #print (self.pogledaj())
 
         trenutni = self.logički()
 
@@ -446,7 +450,7 @@ class C0Parser(Parser):
                 
             else: return trenutni
     def assign(self):
-        trenutni = self.unaries()
+        trenutni = self.array()
         while True:
             if self >> assignOperators:
                 operacija = self.zadnji
@@ -459,6 +463,14 @@ class C0Parser(Parser):
                 trenutni = Dekrement(trenutni)
             else: break
         return trenutni
+    
+    def array(self):
+        trenutni = self.unaries()
+        if self >> Tokeni.IDENTIFIER:
+            if self >> Tokeni.UOTV:
+                trenutni = self.expression()
+                self.pročitaj(Tokeni.UZATV)
+
 
 
     def unaries(self):
@@ -536,13 +548,13 @@ class For(AST('s1 e s2 s3')):
 
         #TODO: ubaci kasnije provjeru kad s1 i s2 nisu zadani
         deklaracija = izraz.s1.izvrši(imena, vrijednosti) #!?
-        print(deklaracija)
+        #print(deklaracija)
 
-        print(izraz.e.istina(imena, vrijednosti))
+        #print(izraz.e.istina(imena, vrijednosti))
         while (izraz.e.istina(imena, vrijednosti)):
             try:
                 izraz.s3.izvrši(imena, vrijednosti)
-                print("izrazs3")
+                #print("izrazs3")
                 izraz.s2.izvrši(imena, vrijednosti)
             except BreakException: break
             
@@ -629,14 +641,10 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
         lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
         desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
 
-        print(isinstance(lijevi, int))
-        print(isinstance(desni, int))
-
         if (isinstance(lijevi, int)):
             if (not isinstance(desni, int)):
                 raise ValueError("Nekompatibilni tipovi")
             else: 
-                print (izraz.lijevaStrana, desni, izraz.operator, vrijednosti)
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, True)
                 return vrijednosti[izraz.lijevaStrana]
 
@@ -730,6 +738,8 @@ class Equality(AST('lijevaStrana desnaStrana operator')):
         else: assert not 'slučaj'
 
     def vrijednost(izraz, imena, vrijednosti):
+        return izraz.istina(imena, vrijednosti)
+    def izvrši(izraz, imena, vrijednosti):
         return izraz.istina(imena, vrijednosti)
 
 class BinarnaOperacija(AST('lijevaStrana desnaStrana operacija')):
@@ -825,9 +835,13 @@ class Dekrement(AST('broj')):
         vrijednosti[izraz.broj] = lijevi - 1
         return lijevi - 1
 
+class Polje(AST('tip varijabla size')):
+    def izvrši(izraz, imena, vrijednosti):
+        
+
 class Konstrukcija(AST('objekt argumenti')):
     """Konstrukcija objekta s argumentima za konstruktor"""
-    # zasad konstruktor podržava samo primitivne tipove
+    # zasad konstruktor ne postoji
     def vrijednost(izraz, imena, vrijednosti):
         o = izraz.objekt.vrijednost()
         a = izraz.argumenti
@@ -854,14 +868,15 @@ if __name__ == '__main__':
     #
     #
     ulaz = r"""
-        int a;
+        int a[3];
         char c = 'c';
         a = 2 + 3;
-    
-        a += 4;
-        a = a + 1;
-        a++;
-        a--;
+
+        a+=9;
+        if(a > 9){}
+        a == 6;
+        
+        
     """
 
     #        a = a + 2;

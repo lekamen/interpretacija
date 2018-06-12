@@ -27,6 +27,7 @@ import re
 # char          -> 'cchar'
 
 class BreakException(Exception): pass
+class ContinueException(Exception): pass
 
 class Tokeni(enum.Enum):
     #separatori
@@ -81,3 +82,6 @@ class Tokeni(enum.Enum):
     class BREAK(Token):
         def izvrši(self, imena, vrijednosti):
             raise BreakException
+    class CONTINUE(Token):
+        def izvrši(self, imena, vrijednosti):
+            raise ContinueException

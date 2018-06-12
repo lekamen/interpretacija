@@ -429,6 +429,12 @@ class C0Parser(Parser):
                 operacija = self.zadnji
                 trenutni = Assignment(trenutni, self.expression(), operacija)
             else: return trenutni
+        while True:
+            if self >> Tokeni.INCR:
+                trenutni = Inkrement(trenutni)
+            elif self >> Tokeni.DECR:
+                trenutni = Dekrement(trenutni)
+
 
     def unaries(self):
         #fali zvjezdica
@@ -488,7 +494,7 @@ class Pridruživanje(AST('varijabla vrijedn')):
                 raise ValueError("Nekompatibilni tipovi")
             else: 
                 vrijednosti[izraz.varijabla.ime] = izraz.vrijedn
-                return int(izraz.vrijedn.sadržaj)
+                return int(vrijednosti[izraz.varijabla.ime].sadržaj)
 
         elif izraz.varijabla.tip ** Tokeni.CHAR:
             if (not isinstance(izraz.vrijedn.vrijednost(imena, vrijednosti), str) or len(izraz.vrijedn.vrijednost(imena, vrijednosti)) != 1):
@@ -512,7 +518,7 @@ class Pridruživanje(AST('varijabla vrijedn')):
                 return izraz.vrijedn.sadržaj
 
 class Assignment(AST('lijevaStrana desnaStrana operator')):
-    """Pridruživanje van inicijalizacije varijabli. Podržava sve operatore pridruživanja"""
+    """Pridruživanje van inicijalizacije varijabli. Podržava sve operatore pridruživanja i njihovo ulančavanje."""
     def vrijednost(izraz, imena, vrijednosti):
 
         if (izraz.lijevaStrana in imena):
@@ -528,9 +534,7 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
         else:
             desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
             print("drugi else")
-        print("dobro pogledaj vedrane")
-        print(lijevi)
-        print(desni)
+
         print(isinstance(lijevi, int))
         print(isinstance(desni, int))
         if (isinstance(lijevi, int)):
@@ -745,6 +749,16 @@ class Minus(AST('iza')):
     def vrijednost(izraz, imena, vrijednosti):
         return - izraz.iza.vrijednost()
 
+class Inkrement(AST('broj')):
+    """Postfix inkrement, vraća inkrementirani broj"""
+    def vrijednost(izraz, imena, vrijednosti):
+        return 
+
+class Dekrement(AST('broj')):
+    """Postfix dekrement, vraća dekrementirani broj"""
+    def vrijednost(izraz, imena, vrijednosti):
+        return
+
 class Konstrukcija(AST('objekt argumenti')):
     """Konstrukcija objekta s argumentima za konstruktor"""
     # zasad konstruktor podržava samo primitivne tipove
@@ -772,15 +786,17 @@ if __name__ == '__main__':
     #         true ? true : false;
     #         a == true ? a : false;"""
     ulaz = r"""
-       
-
+    
         int b = 4;
-        int a = 3;
-        int c = 1;
-        a = b = c;
-        a == 1;
-        b ==1;
-        c ==1;
+        int a = 2;
+        int c =3;
+        a+=3;
+        a == 5;
+        a++;
+        b-=1 ;
+        b==3;
+        b = b +1;
+
 
     """
     #TODO: konstrukcija ponovno uklopit

@@ -279,6 +279,24 @@ osnovniIzrazi = {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.STRLIT, Tokeni.C
             Tokeni.BOOLEAN, Tokeni.IDENTIFIER, Tokeni.NULL}
 class C0Parser(Parser):
 
+    def gdefn(self):
+        print("gdefn")
+        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
+            tip = self.zadnji
+            ime = self.pročitaj(Tokeni.IDENTIFIER)
+            self.pročitaj(Tokeni.OOTV)
+            varijable = []
+            #while not self >> Tokeni.OZATV:
+                #tip = token
+                #ime = ..
+                #Deklaracija
+
+            self.pročitaj(Tokeni.VOTV)
+            statements = []
+            while not self >> Tokeni.VZATV: blok.append(self.stmt())
+            return Funkcija
+        
+
     def stmt(self):
         print(" u naredbi ")
         #ovdje prvo ispitat jesu tokeni if, while, for, return, assert, error
@@ -501,6 +519,7 @@ class C0Parser(Parser):
             naredbe.append(self.stmt())
         return Program(naredbe)
 
+#TODO: 
 class Program(AST('naredbe')):
     def izvrši(self):
         tipovi = ChainMap()
@@ -578,6 +597,8 @@ class Varijabla(AST('tip ime')):
             vrijednosti[izraz.ime] = ""
         elif izraz.tip ** Tokeni.BOOL:
             vrijednosti[izraz.ime] = False
+
+
 
 class Deklaracija(AST('varijabla vrijedn')):
     def izvrši(izraz, imena, vrijednosti):
@@ -747,6 +768,10 @@ class Equality(AST('lijevaStrana desnaStrana operator')):
 
     def vrijednost(izraz, imena, vrijednosti):
         return izraz.istina(imena, vrijednosti)
+    
+    def izvrši(izraz, imena, vrijednosti):
+        izraz.vrijednost(imena, vrijednosti)
+
 
 class BinarnaOperacija(AST('lijevaStrana desnaStrana operacija')):
     def vrijednost(izraz, imena, vrijednosti):
@@ -881,14 +906,11 @@ if __name__ == '__main__':
     #     if (c == 6)
     #         break;
     # }
+    #TODO: 
     ulaz = r"""
        int a = 0;
-
-    int c = 6;
-
-    if (a < 9) {
-        
-    }
+       int b;
+       b == 0;
         
     """
 
@@ -907,4 +929,3 @@ if __name__ == '__main__':
 
     print (program.izvrši())
 
-    

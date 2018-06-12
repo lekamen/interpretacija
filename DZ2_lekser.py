@@ -458,7 +458,15 @@ class C0Parser(Parser):
             if self >> assignOperators:
                 operacija = self.zadnji
                 trenutni = Assignment(trenutni, self.expression(), operacija)
-            else: return trenutni
+            else: break
+        while True:
+            if self >> Tokeni.INCR:
+                trenutni = Inkrement(trenutni)
+            elif self >> Tokeni.DECR:
+                trenutni = Dekrement(trenutni)
+            else: break
+        return trenutni
+
 
     def unaries(self):
         #fali zvjezdica
@@ -645,56 +653,59 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
                 raise ValueError("Nekompatibilni tipovi")
             else: 
                 print (izraz.lijevaStrana, desni, izraz.operator, vrijednosti)
-                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti)
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, True)
                 return vrijednosti[izraz.lijevaStrana]
 
-        #elif (isinstance(lijevi, str) and len(lijevi) == 1):
-        #    if (not (isinstance(lijevi, str) and len(lijevi) == 1)):
-        #        raise ValueError("Nekompatibilni tipovi")
-        #    else:
-        #        Assignment.pridruži(vrijednosti[izraz.lijevaStrana.ime], desni, izraz.operator)
-        #        return vrijednosti[izraz.lijevaStrana.ime][1:-1]
+        elif (isinstance(lijevi, str) and len(lijevi) == 1):
+            if (not (isinstance(lijevi, str) and len(lijevi) == 1)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
+                return vrijednosti[izraz.lijevaStrana.ime][1:-1]
 
-        #elif isinstance(lijevi, bool):
-        #    if (not isinstance(desni, bool)):
-        #        raise ValueError("Nekompatibilni tipovi")
-        #    else:
-        #        Assignment.pridruži(vrijednosti[izraz.lijevaStrana.ime], desni, izraz.operator)
-        #        return bool(vrijednosti[izraz.lijevaStrana.ime])
+        elif isinstance(lijevi, bool):
+            if (not isinstance(desni, bool)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
+                return bool(vrijednosti[izraz.lijevaStrana.ime])
 
-        #elif isinstance(lijevi, str):
-        #    if (not isinstance(desni, str)):
-        #        raise ValueError("Nekompatibilni tipovi")
-        #    else:
-        #        Assignment.pridruži(vrijednosti[izraz.lijevaStrana.ime], vrijednosti[izraz.desnaStrana.ime], izraz.operator)
-        #        return vrijednosti[izraz.lijevaStrana.ime]
+        elif isinstance(lijevi, str):
+            if (not isinstance(desni, str)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
+                return vrijednosti[izraz.lijevaStrana.ime]
         else:
             raise ValueError("Ne znam assignati operande ovog tipa!")
 
-    def pridruži(lijevo, desno, operator, vrijednosti):
+    def pridruži(lijevo, desno, operator, vrijednosti, je_int):
         lijevo_val = vrijednosti[lijevo]
         if operator ** Tokeni.ASSIGN:
             lijevo_val = desno
-        elif operator ** Tokeni.PLUSEQ:
-            lijevo_val = lijevo_val + desno
-        elif operator ** Tokeni.MINUSEQ:
-            lijevo_val = lijevo_val - desno
-        elif operator ** Tokeni.ZVJEQ:
-            lijevo_val = lijevo_val * desno
-        elif operator ** Tokeni.SLASHEQ:
-            lijevo_val = int(lijevo_val/desno)
-        elif operator ** Tokeni.MODEQ:
-            lijevo_val = lijevo_val % desno
-        elif operator ** Tokeni.LSHIFTEQ:
-            lijevo_val = lijevo_val << desno
-        elif operator ** Tokeni.RSHIFTEQ:
-            lijevo_val = lijevo_val >> desno
-        elif operator ** Tokeni.ANDEQ:
-            lijevo_val = lijevo_val & desno
-        elif operator ** Tokeni.POTEQ:
-            lijevo_val = lijevo_val ^ desno
-        elif operator ** Tokeni.CRTAEQ:
-            lijevo_val = lijevo_val | desno
+        elif je_int:
+            if operator ** Tokeni.PLUSEQ:
+                lijevo_val = lijevo_val + desno
+            elif operator ** Tokeni.MINUSEQ:
+                lijevo_val = lijevo_val - desno
+            elif operator ** Tokeni.ZVJEQ:
+                lijevo_val = lijevo_val * desno
+            elif operator ** Tokeni.SLASHEQ:
+                lijevo_val = int(lijevo_val/desno)
+            elif operator ** Tokeni.MODEQ:
+                lijevo_val = lijevo_val % desno
+            elif operator ** Tokeni.LSHIFTEQ:
+                lijevo_val = lijevo_val << desno
+            elif operator ** Tokeni.RSHIFTEQ:
+                lijevo_val = lijevo_val >> desno
+            elif operator ** Tokeni.ANDEQ:
+                lijevo_val = lijevo_val & desno
+            elif operator ** Tokeni.POTEQ:
+                lijevo_val = lijevo_val ^ desno
+            elif operator ** Tokeni.CRTAEQ:
+                lijevo_val = lijevo_val | desno
+        else: 
+            raise ValueError("Ovaj tip ne podržava operator " + operator.sadržaj + ".")
 
         #lijevo_val = str(lijevo_val)
         vrijednosti[lijevo] = lijevo_val
@@ -822,6 +833,20 @@ class Tilda(AST('iza')):
 class Minus(AST('iza')):
     def vrijednost(izraz, imena, vrijednosti):
         return - izraz.iza.vrijednost()
+
+class Inkrement(AST('broj')):
+    """Postfix inkrement, vraća inkrementirani broj"""
+    def izvrši(izraz, imena, vrijednosti):
+        lijevi = izraz.broj.vrijednost(imena, vrijednosti)
+        vrijednosti[izraz.broj] = lijevi + 1
+        return lijevi + 1
+
+class Dekrement(AST('broj')):
+    """Postfix dekrement, vraća dekrementirani broj"""
+    def izvrši(izraz, imena, vrijednosti):
+        lijevi = izraz.broj.vrijednost(imena, vrijednosti)
+        vrijednosti[izraz.broj] = lijevi - 1
+        return lijevi - 1
 
 class Konstrukcija(AST('objekt argumenti')):
     """Konstrukcija objekta s argumentima za konstruktor"""

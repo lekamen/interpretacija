@@ -8,7 +8,7 @@ separatoriZnakovi = '()[]{},;'
 escapeZnakovi = ['\n', '\t', '\v', '\b', '\r', '\f', '\a', '\'', '\"', '\\']
 escapeChars = ['n', 't', 'v', 'b', 'r', 'f', 'a', "'", '"', '\\']
 tipoviPodataka = {'int', 'bool', 'char', 'string'}
-naredbe = {'if', 'else', 'while', 'for', 'return', 'assert', 'error'}
+naredbe = {'if', 'else', 'while', 'for', 'assert', 'error'}
 assignOperators = {Tokeni.PLUSEQ, Tokeni.MINUSEQ, Tokeni.ZVJEQ, Tokeni.SLASHEQ, Tokeni.MODEQ, Tokeni.LSHIFTEQ, Tokeni.RSHIFTEQ, Tokeni.ASSIGN, Tokeni.ANDEQ, Tokeni.POTEQ, Tokeni.CRTAEQ}
 
 #ESCAPE ZNAKOVE VIDI TREBAS LI ZASEBNO
@@ -81,6 +81,7 @@ def Lekser(kôd):
             elif (lex.sadržaj in naredbe): yield lex.token(Tokeni(lex.sadržaj))
             elif (lex.sadržaj == 'break'): yield lex.token(Tokeni.BREAK)
             elif (lex.sadržaj == 'continue'): yield lex.token(Tokeni.CONTINUE)
+            elif (lex.sadržaj == 'return'): yield lex.token(Tokeni.RETURN)
             else:
                 yield lex.token(Tokeni.IDENTIFIER)
         elif znak.isdigit(): 
@@ -286,15 +287,21 @@ class C0Parser(Parser):
             ime = self.pročitaj(Tokeni.IDENTIFIER)
             self.pročitaj(Tokeni.OOTV)
             varijable = []
-            #while not self >> Tokeni.OZATV:
-                #tip = token
-                #ime = ..
-                #Deklaracija
+            while not self >> Tokeni.OZATV:
+                if (not self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}):
+                    raise ValueError("pogrešna inicijalizacija")
+
+                tipVar = self.zadnji
+                imeVar = self.pročitaj(Tokeni.IDENTIFIER)
+                if (not self.pogledaj() ** Tokeni.OZATV):
+                    self.pročitaj(Tokeni.ZAREZ)
+                
+                varijable.append(VarijablaFunkcije(tipVar, imeVar))
 
             self.pročitaj(Tokeni.VOTV)
-            statements = []
-            while not self >> Tokeni.VZATV: blok.append(self.stmt())
-            return Funkcija
+            tijelo = []
+            while not self >> Tokeni.VZATV: tijelo.append(self.stmt())
+            return Funkcija(tip, ime, varijable, tijelo)
         
 
     def stmt(self):
@@ -336,6 +343,12 @@ class C0Parser(Parser):
             self.pročitaj(Tokeni.OZATV)
             tijeloFor = self.stmt()
             return For(deklaracija, uvjet, inkrement, tijeloFor)
+        if self >> Tokeni.RETURN:
+            povratnaVrijednost = ""
+            if (not self.pogledaj() ** Tokeni.SEP):
+                povratnaVrijednost = self.expression()
+            self.pročitaj(Tokeni.SEP)
+            return Return(povratnaVrijednost)
         if self >> Tokeni.BREAK:
             br = self.zadnji
             self.pročitaj(Tokeni.SEP)
@@ -514,12 +527,12 @@ class C0Parser(Parser):
 
 
     def start(self):
-        naredbe = [self.stmt()]
+        naredbe = [self.gdefn()]
         while not self >> E.KRAJ:
-            naredbe.append(self.stmt())
+            naredbe.append(self.gdefn())
         return Program(naredbe)
 
-#TODO: 
+#TODO: funkcije na vrhu?
 class Program(AST('naredbe')):
     def izvrši(self):
         tipovi = ChainMap()
@@ -529,6 +542,21 @@ class Program(AST('naredbe')):
             rezultati.append(naredba.izvrši(tipovi, vrijednosti))
 
         print(tipovi, vrijednosti, rezultati)
+
+#TODO: provjeriti ispravnost povratnog tipa, uvesti riječ void za povratni tip
+class Funkcija(AST('tip ime varijable tijelo')):
+    def izvrši(izraz, imena, vrijednosti):
+        for varijabla in izraz.varijable:
+            print (varijabla)
+            #print(varijabla.tip)
+            varijabla.izvrši(imena, vrijednosti)
+
+        for naredba in izraz.tijelo:
+            try:
+                naredba.izvrši(imena, vrijednosti)
+            except ReturnException:
+                #provjera još jel ispravan povratni tip
+                return naredba.vrijednost(imena, vrijednosti)
 
 class If(AST('uvjet naredba')):
     def izvrši(izraz, imena, vrijednosti):
@@ -584,6 +612,13 @@ class For(AST('s1 e s2 s3')):
                     izraz.s2.izvrši(imena, vrijednosti)
                 continue
             
+class Return(AST('povratnaVrijednost')):
+    def vrijednost(izraz, imena, vrijednosti):
+        return izraz.povratnaVrijednost.vrijednost(imena, vrijednosti)
+    
+    def izvrši(izraz, imena, vrijednosti):
+        raise ReturnException
+
 
 class Varijabla(AST('tip ime')):
     def izvrši(izraz, imena, vrijednosti):
@@ -597,6 +632,11 @@ class Varijabla(AST('tip ime')):
             vrijednosti[izraz.ime] = ""
         elif izraz.tip ** Tokeni.BOOL:
             vrijednosti[izraz.ime] = False
+
+class VarijablaFunkcije(AST('tip ime')):
+    def izvrši(izraz, imena, vrijednosti):
+        #varijabla deklarirana tijelu funkcije ne smije biti inicijalizirana
+        imena[izraz.ime] = izraz.tip
 
 
 
@@ -908,10 +948,12 @@ if __name__ == '__main__':
     # }
     #TODO: 
     ulaz = r"""
-       int a = 0;
+    int main(int c) {
+       int a = 5;
        int b;
        b == 0;
-        
+       return a;
+    }
     """
 
     #        a = a + 2;

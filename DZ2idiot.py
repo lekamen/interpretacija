@@ -28,6 +28,7 @@ import re
 
 class BreakException(Exception): pass
 class ContinueException(Exception): pass
+class ReturnException(Exception): pass
 
 class Tokeni(enum.Enum):
     #separatori
@@ -52,8 +53,7 @@ class Tokeni(enum.Enum):
     #tipovi podataka
     INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
     # statementi
-    IF, ELSE, WHILE, FOR, RETURN, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'return', 'assert', 'error'
-
+    IF, ELSE, WHILE, FOR, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'assert', 'error'
     class IDENTIFIER(Token):
         def vrijednost(self, imena, vrijednosti): 
             try: return vrijednosti[self]
@@ -85,3 +85,6 @@ class Tokeni(enum.Enum):
     class CONTINUE(Token):
         def izvrši(self, imena, vrijednosti):
             raise ContinueException
+    class RETURN(Token):
+        def izvrši(self, imena, vrijednosti):
+            raise ReturnException

@@ -28,7 +28,10 @@ import re
 
 class BreakException(Exception): pass
 class ContinueException(Exception): pass
-class ReturnException(Exception): pass
+class ReturnException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
 
 class Tokeni(enum.Enum):
     #separatori
@@ -50,10 +53,9 @@ class Tokeni(enum.Enum):
     QUOTE, DBLQUOTE, ESCSLASH = '\'', '\"', '\\'
     #komentari
     COMMENT, COM_BEGIN, COM_END = '//', '/*', '*/'
-    #tipovi podataka
-    INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
     # statementi
     IF, ELSE, WHILE, FOR, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'assert', 'error'
+
     class IDENTIFIER(Token):
         def vrijednost(self, imena, vrijednosti): 
             try: return vrijednosti[self]
@@ -88,3 +90,19 @@ class Tokeni(enum.Enum):
     class RETURN(Token):
         def izvrši(self, imena, vrijednosti):
             raise ReturnException
+    class INT(Token):
+        def vrijednost(self, imena, vrijednosti):
+            return int
+    class BOOL(Token):
+        def vrijednost(self, imena, vrijednosti):
+            return bool
+    class CHAR(Token):
+        def vrijednost(self, imena, vrijednosti):
+            return str
+    class STRING(Token):
+        def vrijednost(self, imena, vrijednosti):
+            return str
+    class VOID(Token):
+        def vrijednost(self, imena, vrijednosti):
+            return
+    

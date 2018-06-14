@@ -51,7 +51,9 @@ class Tokeni(enum.Enum):
     COMMENT, COM_BEGIN, COM_END = '//', '/*', '*/'
     #tipovi podataka
     INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
-    # statementi
+    #polja
+    INTARR, BOOLARR, CHARARR, STRINGARR
+    #statementi
     IF, ELSE, WHILE, FOR, RETURN, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'return', 'assert', 'error'
 
     class IDENTIFIER(Token):

@@ -30,6 +30,10 @@ def isidentifier(znak):
     """Provjerava je li znak nešto što ide u identifier"""
     return znak.isalpha() or znak.isdigit() or znak == '_'
 
+def isuzatv(znak):
+    """Provjerava je li znak UZATV"""
+    return znak ==']'
+
 def isNChar(znak):
     """Provjerava je li znak nchar"""
     p = re.compile('^[ -~]$')
@@ -81,6 +85,11 @@ def Lekser(kôd):
             elif (lex.sadržaj in naredbe): yield lex.token(Tokeni(lex.sadržaj))
             elif (lex.sadržaj == 'break'): yield lex.token(Tokeni.BREAK)
             elif (lex.sadržaj == 'continue'): yield lex.token(Tokeni.CONTINUE)
+            sljedeći = lex.pročitaj()
+            if sljedeći == '[':
+                lex.zvijezda(isuzatv)
+                #array token još ne postoji VEDRANE OVDJE GLEDAJ PLS
+                yield lex.token(Tokeni.ARRAY)
             else:
                 yield lex.token(Tokeni.IDENTIFIER)
         elif znak.isdigit(): 
@@ -279,6 +288,24 @@ osnovniIzrazi = {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.STRLIT, Tokeni.C
             Tokeni.BOOLEAN, Tokeni.IDENTIFIER, Tokeni.NULL}
 class C0Parser(Parser):
 
+    def gdefn(self):
+        print("gdefn")
+        if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
+            tip = self.zadnji
+            ime = self.pročitaj(Tokeni.IDENTIFIER)
+            self.pročitaj(Tokeni.OOTV)
+            varijable = []
+            #while not self >> Tokeni.OZATV:
+                #tip = token
+                #ime = ..
+                #Deklaracija
+
+            self.pročitaj(Tokeni.VOTV)
+            statements = []
+            while not self >> Tokeni.VZATV: blok.append(self.stmt())
+            return Funkcija
+        
+
     def stmt(self):
         print(" u naredbi ")
         #ovdje prvo ispitat jesu tokeni if, while, for, return, assert, error
@@ -345,10 +372,10 @@ class C0Parser(Parser):
             #print("Jesmo ovdje")
             #print(tip)
             #print(varijabla)
-            #if self >> Tokeni.UOTV:
-            #    size = self.pročitaj(Tokeni.DECIMALNI)
-            #    self.pročitaj(Tokeni.UZATV)
-            #    return Polje(tip, varijabla, size)
+            if self >> Tokeni.UOTV:
+                size = self.pročitaj(Tokeni.DECIMALNI)
+                self.pročitaj(Tokeni.UZATV)
+                return Polje(tip, varijabla, size)
             if self >> Tokeni.ASSIGN:
                 var = Varijabla(tip, varijabla)
                 desna = self.expression()
@@ -473,6 +500,7 @@ class C0Parser(Parser):
     
     def array(self):
         trenutni = self.unaries()
+        return trenutni
 
 
 
@@ -510,6 +538,7 @@ class C0Parser(Parser):
             naredbe.append(self.stmt())
         return Program(naredbe)
 
+#TODO: 
 class Program(AST('naredbe')):
     def izvrši(self):
         tipovi = ChainMap()
@@ -587,6 +616,8 @@ class Varijabla(AST('tip ime')):
             vrijednosti[izraz.ime] = ""
         elif izraz.tip ** Tokeni.BOOL:
             vrijednosti[izraz.ime] = False
+
+
 
 class Deklaracija(AST('varijabla vrijedn')):
     def izvrši(izraz, imena, vrijednosti):
@@ -755,8 +786,10 @@ class Equality(AST('lijevaStrana desnaStrana operator')):
 
     def vrijednost(izraz, imena, vrijednosti):
         return izraz.istina(imena, vrijednosti)
+    
     def izvrši(izraz, imena, vrijednosti):
-        return izraz.istina(imena, vrijednosti)
+        izraz.vrijednost(imena, vrijednosti)
+
 
 class BinarnaOperacija(AST('lijevaStrana desnaStrana operacija')):
     def vrijednost(izraz, imena, vrijednosti):
@@ -861,7 +894,9 @@ class Dekrement(AST('broj')):
 class Polje(AST('tip ime size')):
     def izvrši(izraz, imena, vrijednosti):
         imena[izraz.ime] = izraz.tip
-
+        print (imena[izraz.ime])
+        vrijednost = [0]*int(izraz.size.sadržaj)
+        vrijednosti[izraz.ime] = vrijednost
         
 
 class Konstrukcija(AST('objekt argumenti')):
@@ -897,11 +932,11 @@ if __name__ == '__main__':
     #     if (c == 6)
     #         break;
     # }
+    #TODO: 
     ulaz = r"""
-       int a = 1;
+       int a[6];
        int b;
        b == 0;
-
         
     """
 
@@ -920,4 +955,3 @@ if __name__ == '__main__':
 
     print (program.izvrši())
 
-    

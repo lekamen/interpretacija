@@ -1141,7 +1141,7 @@ bool isPrime(int n)
            c = b = a;
            c += a += 8;
 
-        print("heeeej", c);
+        print("heeeej", c, isPrime(3));
        return 2;
     }
 

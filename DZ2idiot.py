@@ -53,12 +53,11 @@ class Tokeni(enum.Enum):
     QUOTE, DBLQUOTE, ESCSLASH = '\'', '\"', '\\'
     #komentari
     COMMENT, COM_BEGIN, COM_END = '//', '/*', '*/'
-    #tipovi podataka
-    INT, BOOL, CHAR, STRING = 'int', 'bool', 'char', 'string'
-    #pointeri (kazaljke he he)
-    INT*, BOOL*, CHAR*, STRING* = 'int*', 'bool*', 'char*', 'string*'
     # statementi
     IF, ELSE, WHILE, FOR, ASSERT, ERROR = 'if', 'else', 'while', 'for', 'assert', 'error'
+    # misc
+    ALLOC, ALLOCA = 'alloc', 'alloc_array'
+
 
     class IDENTIFIER(Token):
         def vrijednost(self, imena, vrijednosti): 
@@ -108,5 +107,11 @@ class Tokeni(enum.Enum):
             return str
     class VOID(Token):
         def vrijednost(self, imena, vrijednosti):
+            return
+    class POINTER(Token):
+        def vrijednost(self, imena, vrijednosti):
+            return
+    class ARRAY(Token):
+        def vrijednost(Self, imena, vrijednosti):
             return
     

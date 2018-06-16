@@ -10,7 +10,7 @@ escapeChars = ['n', 't', 'v', 'b', 'r', 'f', 'a', "'", '"', '\\']
 naredbe = {'if', 'else', 'while', 'for', 'assert', 'error'}
 
 assignOperators = {Tokeni.PLUSEQ, Tokeni.MINUSEQ, Tokeni.ZVJEQ, Tokeni.SLASHEQ, Tokeni.MODEQ, Tokeni.LSHIFTEQ, Tokeni.RSHIFTEQ, Tokeni.ASSIGN, Tokeni.ANDEQ, Tokeni.POTEQ, Tokeni.CRTAEQ}
-primitivniTipovi = {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR, Tokeni.POINTER}
+primitivniTipovi = {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR, Tokeni.POINTER, Tokeni.ARRAY}
 #ESCAPE ZNAKOVE VIDI TREBAS LI ZASEBNO
 
 #rezervirane riječi
@@ -98,59 +98,50 @@ def Lekser(kôd):
             elif (lex.sadržaj == 'int'): 
                 sljedeći = lex.pogledaj()
                 if sljedeći == '*':
-                    lex.plus(isZvijezda)
-                    temp = lex.sadržaj.replace(" ", "")
-                    lex.token(E.VIŠAK)
-                    yield Token(Tokeni.POINTER, temp)
+                    lex.čitaj()
+                    yield lex.token(Tokeni.POINTER)
                 elif sljedeći == '[':
+                    lex.čitaj()
                     lex.pročitaj(']')
                     yield lex.token(Tokeni.ARRAY)
                 else: yield lex.token(Tokeni.INT)
             elif (lex.sadržaj == 'bool'): 
-                lex.zvijezda(isSpace)
                 sljedeći = lex.pogledaj()
                 if sljedeći == '*':
-                    lex.plus(isZvijezda)
-                    temp = lex.sadržaj.replace(" ", "")
-                    lex.token(E.VIŠAK)
-                    yield Token(Tokeni.POINTER, temp)
+                    lex.čitaj()
+                    yield lex.token(Tokeni.POINTER)
                 elif sljedeći == '[':
+                    lex.čitaj()
                     lex.pročitaj(']')
                     yield lex.token(Tokeni.ARRAY)
                 yield lex.token(Tokeni.BOOL)
             elif (lex.sadržaj == 'char'): 
-                lex.zvijezda(isSpace)
                 sljedeći = lex.pogledaj()
                 if sljedeći == '*':
-                    lex.plus(isZvijezda)
-                    temp = lex.sadržaj.replace(" ", "")
-                    lex.token(E.VIŠAK)
-                    yield Token(Tokeni.POINTER, temp)
+                    lex.čitaj()
+                    yield lex.token(Tokeni.POINTER)
                 elif sljedeći == '[':
+                    lex.čitaj()
                     lex.pročitaj(']')
                     yield lex.token(Tokeni.ARRAY)
                 yield lex.token(Tokeni.CHAR)
             elif (lex.sadržaj == 'string'): 
-                lex.zvijezda(isSpace)
                 sljedeći = lex.pogledaj()
                 if sljedeći == '*':
-                    lex.plus(isZvijezda)
-                    temp = lex.sadržaj.replace(" ", "")
-                    lex.token(E.VIŠAK)
-                    yield Token(Tokeni.POINTER, temp)
+                    lex.čitaj()
+                    yield lex.token(Tokeni.POINTER)
                 elif sljedeći == '[':
+                    lex.čitaj()
                     lex.pročitaj(']')
                     yield lex.token(Tokeni.ARRAY)
                 yield lex.token(Tokeni.STRING)
             elif (lex.sadržaj == 'void'): 
-                lex.zvijezda(isSpace)
                 sljedeći = lex.pogledaj()
                 if sljedeći == '*':
-                    lex.plus(isZvijezda)
-                    temp = lex.sadržaj.replace(" ", "")
-                    lex.token(E.VIŠAK)
-                    yield Token(Tokeni.POINTER, temp)
+                    lex.čitaj()
+                    yield lex.token(Tokeni.POINTER)
                 elif sljedeći == '[':
+                    lex.čitaj()
                     lex.pročitaj(']')
                     yield lex.token(Tokeni.ARRAY)
                 yield lex.token(Tokeni.VOID)
@@ -578,9 +569,10 @@ class C0Parser(Parser):
             self.pročitaj(Tokeni.OOTV)
             if self >> primitivniTipovi:
                 tip = self.zadnji
+                self.pročitaj(Tokeni.ZAREZ)
                 koliko = self.expression()
                 self.pročitaj(Tokeni.OZATV)
-                trenutni = AlocArray(tip, koliko)
+                trenutni = AlocirajArray(tip, koliko)
             else:
                 self.zadnji.neočekivan()
         return trenutni
@@ -597,24 +589,10 @@ class C0Parser(Parser):
             iza = self.expression()
             return Minus(iza)
         if self >> Tokeni.ZVJ:
-            iza = self.expression()
+            iza = self.base()
             trenutni = Dereferenciraj(iza)
             return trenutni
-        if self >> Tokeni.IDENTIFIER:
-            trenutni = self.zadnji
-            while True:
-                if self >> Tokeni.INCR:
-                    trenutni = Inkrement(trenutni)
-                elif self >> Tokeni.DECR:
-                    trenutni = Dekrement(trenutni)
-                else: 
-                    break
-            if self >> Tokeni.UOTV:
-                trenutni = self.expression()
-                self.pročitaj(Tokeni.UZATV)
-                trenutni = Dohvati(trenutni)
-            return trenutni
-        
+       
  #       if self >> Tokeni.ZVJ:
   #          iza = self.expression()
    #         trenutni = Dereferenciraj(iza)
@@ -641,15 +619,31 @@ class C0Parser(Parser):
                     imeVar = self.expression()
                     if (not self.pogledaj() ** Tokeni.OZATV):
                         self.pročitaj(Tokeni.ZAREZ)
-                
                     varijable.append(imeVar)
-                return IzvrijedniFunkciju(ime, varijable)
+                    return IzvrijedniFunkciju(ime, varijable)
+            
+            if (self.pogledaj() ** Tokeni.INCR or self.pogledaj() ** Tokeni.DECR):
+                trenutni = self.zadnji
+                while True:
+                    if self >> Tokeni.INCR:
+                        trenutni = Inkrement(trenutni)
+                    elif self >> Tokeni.DECR:
+                        trenutni = Dekrement(trenutni)
+                    else: 
+                        break
+                return trenutni
+
+            if self >> Tokeni.UOTV:
+                trenutni = self.expression()
+                self.pročitaj(Tokeni.UZATV)
+                trenutni = Dohvati(ime, trenutni)
+                return trenutni
+
             else:
                 return ime
         if self >> osnovniIzrazi:
             trenutni = self.zadnji
             return trenutni
-        else: print("ok šta je ovo sad")
 
 
 
@@ -842,9 +836,11 @@ class Varijabla(AST('tip ime')):
         elif izraz.tip ** Tokeni.BOOL:
             vrijednosti[izraz.ime] = [False]
         elif izraz.tip ** Tokeni.POINTER:
-            vrijednosti[izraz.ime] = [[]]
+            # N kao NULL
+            vrijednosti[izraz.ime] = [['N' + izraz.tip.sadržaj]]
         elif izraz.tip ** Tokeni.ARRAY:
-            vrijednosti[izraz.ime] = [[]]
+            # NP kao NULL polje
+            vrijednosti[izraz.ime] = [0, [izraz.tip.sadržaj]]
 
 class Deklaracija(AST('varijabla vrijedn')):
     def izvrši(izraz, imena, vrijednosti):
@@ -855,6 +851,11 @@ class Deklaracija(AST('varijabla vrijedn')):
         izraz.varijabla.ime.vrijednost(imena, vrijednosti)
 
         value = izraz.vrijedn.vrijednost(imena, vrijednosti)
+        print("VALUE")
+        print(value)
+        print(izraz.varijabla.ime.vrijednost)
+        
+        print("pointer")
         if (isinstance(value, list)):
             value = value[0]
 
@@ -875,8 +876,30 @@ class Deklaracija(AST('varijabla vrijedn')):
                 raise ValueError("Nekompatibilni tipovi")    
 
         elif izraz.varijabla.tip ** Tokeni.POINTER:
-            if (type(value) is not int):
-                raise ValueError("Neispravna adresa")
+            try:
+                value = value[0]
+            except: raise ValueError("Neispravna adresa")
+            # provjeri tip pointera
+            tip = izraz.varijabla.tip.sadržaj
+            if(tip == 'int*'):
+                if(not isinstance(value, int)):
+                    raise ValueError("Nekompatibilan tip pointera, očekujem " + tip)
+            elif(tip == 'char*'):
+                if(not isinstance(value, str) or len(value)!=1):
+                    raise ValueError("Nekompatibilan tip pointera, očekujem " + tip)
+            elif(tip == 'bool*'):
+                if(not isinstance(value, bool)):
+                    raise ValueError("Nekompatibilan tip pointera, očekujem " + tip)
+            elif(tip == 'string*'):
+                if(not isinstance(value, str)):
+                    raise ValueError("Nekompatibilan tip pointera, očekujem " + tip)
+            else: raise ValueError("Nepoznat tip pointera")
+            value = [value]
+
+        elif izraz.varijabla.tip ** Tokeni.ARRAY:
+            print("ovo!!!!")
+            print (izraz.varijabla.tip)
+
             
         vrijednosti[izraz.varijabla.ime][0] = value
 
@@ -887,20 +910,27 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
     def vrijednost(izraz, imena, vrijednosti):
 
         lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
- 
-        if isinstance(lijevi, list):
+        if isinstance(lijevi, list) and len(lijevi) < 2:
             lijevi = lijevi[0]
         
         desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
-        if isinstance(desni, list):
+        if isinstance(desni, list) and len(desni) < 2:
             desni = desni[0]
         
-        print(lijevi, desni)
+        print("assign: ", lijevi, desni)
+        if(isinstance(izraz.lijevaStrana, Dohvati)):
+            nešto = izraz.lijevaStrana.odakle.vrijednost(imena, vrijednosti)
+            print(nešto)
 
         if (isinstance(lijevi, int)):
             if (not isinstance(desni, int)):
                 raise ValueError("Nekompatibilni tipovi")
             else: 
+                print("int sam i ušao sam u else")
+                left = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
+                print("novi lijevi", left)
+                print(izraz.lijevaStrana.vrijednost(imena, vrijednosti))
+                print(izraz.lijevaStrana, desni, izraz.operator,imena, vrijednosti)
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator,imena, vrijednosti, True)
                 return izraz.lijevaStrana.vrijednost(imena, vrijednosti)
 
@@ -924,11 +954,44 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
             else:
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator,imena,  vrijednosti, False)
                 return izraz.lijevaStrana.vrijednost(imena, vrijednosti)
-        elif isinstance(lijevi, list):
-            if (not isinstance(desni, list)):
-                print(lijevi, desni)
+        elif isinstance(lijevi, list) and len(lijevi) >= 2:
+            # onda je array
+            print("ušao sam u polje", lijevi)
+            if(not isinstance(desni, list) or len(desni) < 2):
                 raise ValueError("Nekompatibilni tipovi")
             else:
+                # dohvati tip polja
+                try:
+                    tipl = izraz.lijevaStrana.vrijednost(imena, vrijednosti)[1][0][:-2]
+                    print (izraz.lijevaStrana.vrijednost(imena, vrijednosti))
+                except: tipl = type(izraz.lijevaStrana.vrijednost(imena, vrijednosti)[1][0]).__name__
+
+                try:
+                    tipr = izraz.desnaStrana.vrijednost(imena, vrijednosti)[1][0][:-2]
+                except: tipr= type(izraz.desnaStrana.vrijednost(imena, vrijednosti)[1][0]).__name__
+                
+                # provjeri da su isti s lijeve i desne strane
+                if(tipl != tipr):
+                    raise ValueError("Nekompatibilan tip polja, očekujem " + tipl + "[], dobio " + tipr + "[].")
+                Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, imena, vrijednosti, False)
+                return izraz.lijevaStrana.vrijednost(imena, vrijednosti)     
+
+
+        elif isinstance(lijevi, list):
+            if (not isinstance(desni, list)):
+                raise ValueError("Nekompatibilni tipovi")
+            else:
+                # provjeri tip pointera
+                try:
+                    tipl = izraz.lijevaStrana.vrijednost(imena, vrijednosti)[0][0][1:-1]
+                except: tipl = izraz.lijevaStrana.tip.sadržaj
+
+                try:
+                    tipr = izraz.desnaStrana.vrijednost(imena, vrijednosti)[0][0][1:-1]
+                except: tipr = izraz.desnaStrana.tip.sadržaj
+
+                if(tipl != tipr):
+                    raise ValueError("Nekompatibilan tip pointera, očekujem " + tipl + "*, dobio " + tipr + "*.")
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator,imena,  vrijednosti, False)
                 return izraz.lijevaStrana.vrijednost(imena, vrijednosti)
         else:
@@ -938,12 +1001,10 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
         izraz.vrijednost(imena, vrijednosti)
 
     def pridruži(lijevo, desno, operator,imena,  vrijednosti, je_int):
-        print("EVO MENE LIPI MOJI")
-        print(lijevo)
         lijevo_val = lijevo.vrijednost(imena, vrijednosti)
-        print(lijevo_val)
-        print("DOŠA SAN VAN NA BEVANDU")
-        lijevo_val = lijevo_val[0]
+        print("ajshgkjasgh",lijevo_val)
+        if(len(lijevo_val) < 2):
+            lijevo_val = lijevo_val[0]
         if operator ** Tokeni.ASSIGN:
             lijevo_val = desno
         elif je_int:
@@ -969,8 +1030,13 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
                 lijevo_val = lijevo_val | desno
         else: 
             raise ValueError("Ovaj tip ne podržava operator " + operator.sadržaj + ".")
-
-        lijevo.vrijednost(imena, vrijednosti)[0] = lijevo_val
+        if(len(lijevo.vrijednost(imena, vrijednosti)) < 2):
+            print("blabla",lijevo_val)
+            lijevo.vrijednost(imena, vrijednosti)[0] = lijevo_val
+            print("blabla2",lijevo.vrijednost(imena, vrijednosti))
+        else: 
+            print("ulazim u pogrešni else")
+            lijevo.vrijednost(imena, vrijednosti)[:] = lijevo_val[:]
 
 class Comparison(AST('lijevaStrana desnaStrana operator')):
     def istina(izraz, imena, vrijednosti):
@@ -1123,14 +1189,26 @@ class Minus(AST('iza')):
 
 class Dereferenciraj(AST('iza')):
     def vrijednost(izraz, imena, vrijednosti):
-        return (izraz.iza.vrijednost(imena, vrijednosti))[0]
+        argument = izraz.iza.vrijednost(imena, vrijednosti)
+        if(isinstance(argument, list)):
+            argument = argument[0]
+        else: raise ValueError("Ne znam dereferencirati nešto što nije pointer!")
+
+        if(isinstance(argument, list)):
+            if len(argument) == 0:
+                raise ValueError("Ne znam dereferencirati NULL!")
+            return (izraz.iza.vrijednost(imena, vrijednosti))[0]
+        else: raise ValueError("Ne znam dereferencirati nešto što nije pointer!")
     
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
 
-class Dohvati(AST('koga')):
+class Dohvati(AST('odakle koga')):
     def vrijednost(izraz, imena, vrijednosti):
-        return (izraz.iza.vrijednost(imena, vrijednosti))[izraz.koga]
+        if(int(izraz.koga.sadržaj) >= izraz.odakle.vrijednost(imena, vrijednosti)[0]):
+            raise RuntimeError("Indeks izvan granica array-a")
+        print("hrr", int(izraz.koga.sadržaj)+1, (izraz.odakle.vrijednost(imena, vrijednosti))[int(izraz.koga.sadržaj)+1])
+        return (izraz.odakle.vrijednost(imena, vrijednosti))[int(izraz.koga.sadržaj)+1]
     
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
@@ -1163,30 +1241,27 @@ class Alociraj(AST('tip')):
             return [[0]]
         else: raise TypeError("Nepoznat tip!")
 
-class AlocArray(AST('tip koliko')):
+class AlocirajArray(AST('tip koliko')):
+    # nema polja pointera
     def vrijednost(izraz, imena, vrijednosti):
+        temp_list =[int(izraz.koliko.sadržaj)]
+
         if izraz.tip ** Tokeni.INT:
-            return [[0]*izraz.koliko]
+            print( izraz.koliko.sadržaj)
+            for i in range(int(izraz.koliko.sadržaj)): temp_list.append([0])
+            #return [int(izraz.koliko.sadržaj)] + [[0]]*int(izraz.koliko.sadržaj)
+            return temp_list
         elif izraz.tip ** Tokeni.CHAR:
-            return [['\0']*izraz.koliko]
+            for i in range(int(izraz.koliko.sadržaj)): temp_list.append(['\0'])
         elif izraz.tip ** Tokeni.STRING:
-            return [[""]*izraz.koliko]
+            for i in range(int(izraz.koliko.sadržaj)): temp_list.append([""])
         elif izraz.tip ** Tokeni.BOOL:
-            return [[False]*izraz.koliko]
-        elif izraz.tip ** Tokeni.POINTER:
-            return [[0]*izraz.koliko]
+            for i in range(int(izraz.koliko.sadržaj)): temp_list.append([False])
+        #elif izraz.tip ** Tokeni.POINTER:
+        #    return [[[0]]*izraz.koliko]
         else: raise TypeError("Nepoznat tip!")
 
-class Konstrukcija(AST('objekt argumenti')):
-    """Konstrukcija objekta s argumentima za konstruktor"""
-    # zasad konstruktor ne postoji
-    def vrijednost(izraz, imena, vrijednosti):
-        o = izraz.objekt.vrijednost()
-        a = izraz.argumenti
-        for argument in a:
-            o = argument.vrijednost()
-        return o
-        
+        return temp_list
 
 if __name__ == '__main__':
     #lista = list(Lekser("1 _nesto0 () ; * -> += <lib\"char  0x23 \n \t \v alo \' ' '\0'"))
@@ -1210,23 +1285,32 @@ if __name__ == '__main__':
     #     if (c == 6)
     #         break;
     # }
+    #
+    #    
+    #
+    #int main() {
+    #    
+    #    int* a;
+    #    int b = 6;
+    #    int c = 3;
+    #    a = alloc(int);
+    #    *a = b;
+    #    return *a;
+    #}
+
+
 
 
    
     ulaz = r"""
-
-    int main() {
-        
-        int* a;
-        int b = 6;
-        int c = 3;
-        a = alloc(int);
-        (*a)= b;
-        return *a;
-    }
-
-
-
+        int main() {
+            int[] a ;
+            int b =6;
+            a = alloc_array(int, 7);
+            a[0] = 6;
+            a[5] += 3;
+            return b;
+        }
     """
   
     tokeni = list(Lekser(ulaz))

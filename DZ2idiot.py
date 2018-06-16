@@ -112,6 +112,6 @@ class Tokeni(enum.Enum):
         def vrijednost(self, imena, vrijednosti):
             return
     class ARRAY(Token):
-        def vrijednost(Self, imena, vrijednosti):
+        def vrijednost(self, imena, vrijednosti):
             return
     

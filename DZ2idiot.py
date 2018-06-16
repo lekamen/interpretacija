@@ -82,11 +82,6 @@ class Tokeni(enum.Enum):
             return self.sadržaj[1 : len(self.sadržaj) - 1]
         def izvrši(self, imena, vrijednosti):
             self.vrijednost(imena, vrijednosti)
-    class LIBLIT(Token):
-        def vrijednost(self):
-            return self.sadržaj
-        def izvrši(self, imena, vrijednosti):
-            self.vrijednost(imena, vrijednosti)
     class BOOLEAN(Token):
         def vrijednost(self, imena, vrijednosti):
             return self.sadržaj == 'true'

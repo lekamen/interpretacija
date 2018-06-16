@@ -1,4 +1,3 @@
-
 from string import hexdigits
 from pj import *
 from collections import ChainMap
@@ -11,21 +10,9 @@ naredbe = {'if', 'else', 'while', 'for', 'assert', 'error', 'print'}
 
 assignOperators = {Tokeni.PLUSEQ, Tokeni.MINUSEQ, Tokeni.ZVJEQ, Tokeni.SLASHEQ, Tokeni.MODEQ, Tokeni.LSHIFTEQ, Tokeni.RSHIFTEQ, Tokeni.ASSIGN, Tokeni.ANDEQ, Tokeni.POTEQ, Tokeni.CRTAEQ}
 
-#ESCAPE ZNAKOVE VIDI TREBAS LI ZASEBNO
-
-#rezervirane riječi
-Struct = Token(Tokeni.IDENTIFIER, 'struct')
-Typedef = Token(Tokeni.IDENTIFIER, 'typedef')
-Alloc = Token(Tokeni.IDENTIFIER, 'alloc')
-Alloc_array = Token(Tokeni.IDENTIFIER, 'alloc_array')
-
 def isxdigit(znak):
     """Provjerava je li znak hex znamenka"""
     return znak != '' and (znak.isdigit() or znak in 'ABCDEFabcdef')
-
-def isidentifier(znak):
-    """Provjerava je li znak nešto što ide u identifier"""
-    return znak.isalpha() or znak.isdigit() or znak == '_'
 
 def isNChar(znak):
     """Provjerava je li znak nchar"""
@@ -39,13 +26,6 @@ def isSChar(znak):
     if (isNChar(znak) or znak in escapeZnakovi):
         return True
     return False
-
-def isLChar(znak):
-    """Provjerava je li znak lchar"""
-    p = re.compile('^[ -~]$')
-    if (p.match(znak) is None or znak == '>'):
-        return False
-    return True
 
 def Lekser(kôd):
     lex = Tokenizer(kôd)
@@ -104,18 +84,16 @@ def Lekser(kôd):
                 # onda je dec
                 lex.zvijezda(str.isdigit)
                 yield lex.token(Tokeni.DECIMALNI)
-
-        # TODO: liblit se MORA prepoznavati u parseru!!!
         # je li chrlit?
         elif znak == "'":
             idući = lex.čitaj()
             if (not isNChar(idući) and not idući in escapeZnakovi and not idući == '"' and not idući == '\0'):
-                raise RuntimeError("Neispravan chrlit")
+                raise LeksičkaGreška("Neispravan chrlit")
             kraj = lex.čitaj()
             if (kraj == "'"):
                 yield lex.token(Tokeni.CHRLIT)
             else:
-                raise RuntimeError("Neispravan chrlit")           
+                raise LeksičkaGreška("Neispravan chrlit")           
         #je li escape sekvenca ili separator?
         elif znak in separatoriZnakovi:
             yield lex.token(Tokeni(znak))
@@ -199,7 +177,7 @@ def Lekser(kôd):
                 yield lex.token(Tokeni.INCR)
             else:
                 yield lex.token(Tokeni.PLUS)
-        #neki od operatora <, <<, <<=, <=?
+        #operatori <, <<, <<=, <=
         elif znak == '<':
             sljedeći = lex.pogledaj()
 
@@ -283,7 +261,6 @@ osnovniIzrazi = {Tokeni.DECIMALNI, Tokeni.HEKSADEKADSKI, Tokeni.STRLIT, Tokeni.C
 class C0Parser(Parser):
 
     def prog(self):
-        print("prog")
         if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR, Tokeni.VOID}:
             tip = self.zadnji
             ime = self.pročitaj(Tokeni.IDENTIFIER)
@@ -292,7 +269,7 @@ class C0Parser(Parser):
             varijable = []
             while not self >> Tokeni.OZATV:
                 if (not self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}):
-                    raise ValueError("pogrešna inicijalizacija")
+                    raise SintaksnaGreška("pogrešna inicijalizacija")
 
                 tipVar = self.zadnji
                 imeVar = self.pročitaj(Tokeni.IDENTIFIER)
@@ -386,8 +363,6 @@ class C0Parser(Parser):
 
 
     def simple(self):
-        #ostali.....
- 
         if self >> {Tokeni.INT, Tokeni.BOOL, Tokeni.STRING, Tokeni.CHAR}:
             tip = self.zadnji
             varijabla = self.pročitaj(Tokeni.IDENTIFIER)
@@ -412,33 +387,8 @@ class C0Parser(Parser):
                 trenutni = TernarniOperator(trenutni, prviUvjet, drugiUvjet)
             else: return trenutni
 
-        # if self >> Tokeni.IDENTIFIER:
-        #     var = self.zadnji
-        #     idući = self.pogledaj()
-        #     print(idući)
-        #     if idući ** Tokeni.OOTV:
-        #         self.pročitaj(Tokeni.OOTV)
-        #         konstruktor_argumenti = []
-        #         while True:
-        #             sljedeći = self.pogledaj()
-        #             print(sljedeći)
-        #             if sljedeći ** Tokeni.OZATV:
-        #                 self.pročitaj(Tokeni.OZATV)
-        #                 break
-        #             else:
-        #                 ssljedeći = self.expression()
-        #                 konstruktor_argumenti.append(ssljedeći)
-        #                 zarez = self.pogledaj()
-        #                 if zarez ** Tokeni.ZAREZ:
-        #                     self.pročitaj(Tokeni.ZAREZ)
-        #                 print("daddy attention" + str(zarez))
-        #         return Konstrukcija(var, konstruktor_argumenti)
-
         else:
-            #do ovdje su odrađeni svi slučajevi gramatike gdje
-            #prvi član pravila nije expression
             self.greška()
-            #može se dogoditi i da stoji samo jedan izraz, mora se i to obraditi
 
     def logički(self):
         trenutni = self.bitwise()
@@ -513,7 +463,6 @@ class C0Parser(Parser):
 
 
     def unaries(self):
-        #fali zvjezdica
         if self >> Tokeni.USKL:
             iza = self.expression()
             return Negacija(iza)
@@ -528,8 +477,6 @@ class C0Parser(Parser):
         return baza
 
     def base(self):
-        #odradit operatore, pozvat expression
-        print("base", self.zadnji)
         if self >> Tokeni.OOTV:
             u_zagradi = self.expression()
             self.pročitaj(Tokeni.OZATV)
@@ -586,12 +533,12 @@ class Program(AST('naredbe')):
                 tipovi[tip].izvrijedni(tipovi, vrijednosti, [])
                 return
 
-        raise ValueError("nema main funkcije")
+        raise GreškaIzvođenja("nema main funkcije")
 
 class PrintFunkcija(AST('print')):
     def izvrši(izraz, imena, vrijednosti):
         for p in izraz.print:
-            print (p.vrijednost(imena, vrijednosti))
+            print (p, p.vrijednost(imena, vrijednosti))
 
 class DeklaracijaFunkcije(AST('tip ime varijable')):
     def izvrši(izraz, imena, vrijednosti):
@@ -606,22 +553,22 @@ class DeklaracijaFunkcije(AST('tip ime varijable')):
             #funkcija.izvrši(imena, vrijednosti)
 
     def izvrijedni(izraz, imena, vrijednosti, argumenti):
-        raise ValueError("ne može se izvrijedniti samo deklarirana funkcija")
+        raise GreškaIzvođenja("ne može se izvrijedniti samo deklarirana funkcija")
 
     def provjeri(izraz, imena, vrijednosti):
         postojeća = imena[izraz.ime]
         if (izraz.tip != postojeća.tip):
-            raise ValueError("nisu kompatibilni povratni tipovi iste funkcije")
+            raise GreškaIzvođenja("nisu kompatibilni povratni tipovi iste funkcije")
         if (len(izraz.varijable) != len(postojeća.varijable)):
-            raise ValueError("različiti broj argumenata za istu funkciju")
+            raise GreškaIzvođenja("različiti broj argumenata za istu funkciju")
         for i in range (0, len(izraz.varijable)):
             if (izraz.varijable[i].tip != postojeća.varijable[i].tip):
-                raise ValueError("nekompatibilni tipovi argumenata iste funkcije")
+                raise GreškaIzvođenja("nekompatibilni tipovi argumenata iste funkcije")
         
 class DefinicijaFunkcije(AST('tip ime varijable tijelo')):
     def izvrši(izraz, imena, vrijednosti):
         if (izraz.ime in imena and isinstance(imena[izraz.ime], DefinicijaFunkcije)):
-            raise ValueError("Ne smiju postojati dvije definicije iste funkcije!")
+            raise GreškaIzvođenja("Ne smiju postojati dvije definicije iste funkcije!")
         else:
             #registriraj sebe u function and variable namespace
             imena[izraz.ime] = izraz
@@ -650,10 +597,10 @@ class Funkcija(AST('tip ime varijable tijelo')):
 
     def izvrijedni(izraz, imena, vrijednosti, argumenti):
         if (len(argumenti) != len(izraz.varijable)):
-            raise ValueError("neispravan broj argumenata kod poziva funkcije")
+            raise SemantičkaGreška("neispravan broj argumenata kod poziva funkcije")
         for i in range(0, len(argumenti)):
             if (not isinstance(argumenti[i], izraz.varijable[i].tip.vrijednost(izraz.varijableF, izraz.vrijednostiF))):
-                raise ValueError("neispravan tip argumenta")
+                raise SemantičkaGreška("neispravan tip argumenta")
             izraz.vrijednostiF[izraz.varijable[i].ime] = argumenti[i]
 
         for naredba in izraz.tijelo:
@@ -664,11 +611,11 @@ class Funkcija(AST('tip ime varijable tijelo')):
                 povratna = ex.message
                 if (povratna is None):
                     if (not izraz.tip ** Tokeni.VOID):
-                        raise ValueError("povratna vrijednost funkcije mora biti void")
+                        raise SemantičkaGreška("povratna vrijednost funkcije mora biti void")
                 else: #tip povratne vrijednosti se mora slagati s tipom povratne vrijednosti funkcije
 
                     if (not isinstance(povratna, izraz.tip.vrijednost(izraz.varijableF, izraz.vrijednostiF))):
-                        raise ValueError("nekompatibilni povratni tip s povratnim tipom funkcije")
+                        raise SemantičkaGreška("nekompatibilni povratni tip s povratnim tipom funkcije")
                 return povratna
             
 
@@ -676,7 +623,7 @@ class IzvrijedniFunkciju(AST('imeFunkcije argumenti')):
     def izvrši(izraz, imena, vrijednosti):
         #funkcija mora biti deklarirana prije poziva
         if (not izraz.imeFunkcije in imena):
-            raise ValueError("poziv nepostojeće funkcije!")
+            raise SemantičkaGreška("poziv nepostojeće funkcije!")
         evaluiraniArgumenti = []
         for argument in izraz.argumenti:
             evaluiraniArgumenti.append(argument.vrijednost(imena, vrijednosti)) #možda još ovo promijeniti
@@ -716,18 +663,18 @@ class Assert(AST('uvjet')):
     def izvrši(izraz, imena, vrijednosti):
         value = izraz.uvjet.vrijednost(imena, vrijednosti)
         if (not isinstance(value, bool)):
-            raise ValueError("u assert statement mora ići izraz koji ima bool vrijednost")
+            raise GreškaIzvođenja("u assert statement mora ići izraz koji ima bool vrijednost")
         if (not value):
             print("Provjera izraza nije prošla!", izraz)
-            raise SystemExit
+            raise GreškaIzvođenja()
 
 class Error(AST('poruka')):
     def izvrši(izraz, imena, vrijednosti):
         message = izraz.poruka.vrijednost(imena, vrijednosti)
         if (not isinstance(message, str)):
-            raise ValueError("u error može ići samo string")
+            raise GreškaIzvođenja("u error može ići samo string")
         print (message)
-        raise SystemExit
+        raise GreškaIzvođenja()
 
 class Blok(AST('blok')):
     def izvrši(izraz, imena, vrijednosti):
@@ -764,13 +711,13 @@ class For(AST('s1 e s2 s3')):
                 izraz.s3.izvrši(imena, vrijednosti)
                 if (not izraz.s2 == ""):
                     if (isinstance(izraz.s2, Deklaracija)):
-                        raise ValueError("nije dopoušteno deklarirati varijablu")
+                        raise SemantičkaGreška("nije dopušteno deklarirati varijablu")
                     izraz.s2.izvrši(imena, vrijednosti)
             except BreakException: break
             except ContinueException: 
                 if (not izraz.s2 == ""):
                     if (isinstance(izraz.s2, Deklaracija)):
-                        raise ValueError("nije dopoušteno deklarirati varijablu")
+                        raise SemantičkaGreška("nije dopoušteno deklarirati varijablu")
                     izraz.s2.izvrši(imena, vrijednosti)
                 continue
             except ReturnException as e:
@@ -792,7 +739,7 @@ class Return(AST('povratnaVrijednost')):
         else:
             try:
                 return izraz.povratnaVrijednost.vrijednost(imena, vrijednosti)
-            except SemantičkaGreška: raise ValueError("varijabla nije nigdje inicijalizirana", izraz.povratnaVrijednost)
+            except SemantičkaGreška: raise GreškaIzvođenja("varijabla nije nigdje inicijalizirana", izraz.povratnaVrijednost)
     
     def izvrši(izraz, imena, vrijednosti):
         raise ReturnException(izraz.vrijednost(imena, vrijednosti))
@@ -831,11 +778,11 @@ class Deklaracija(AST('varijabla vrijedn')):
         value = izraz.vrijedn.vrijednost(imena, vrijednosti)
 
         if (not isinstance(value, izraz.varijabla.tip.vrijednost(imena, vrijednosti))):
-                raise ValueError("nekompatibilni tipovi")
+                raise SemantičkaGreška("nekompatibilni tipovi")
 
         if izraz.varijabla.tip ** Tokeni.CHAR: #provjeri još duljinu
             if (len(value) != 1):
-                raise ValueError("Nekompatibilni tipovi")
+                raise SemantičkaGreška("Nekompatibilni tipovi")
 
         vrijednosti[izraz.varijabla.ime] = value    
 
@@ -848,33 +795,33 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
 
         if (isinstance(lijevi, int)):
             if (not isinstance(desni, int)):
-                raise ValueError("Nekompatibilni tipovi")
+                raise SemantičkaGreška("Nekompatibilni tipovi")
             else: 
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, True)
                 return vrijednosti[izraz.lijevaStrana]
 
         elif (isinstance(lijevi, str) and len(lijevi) == 1):
             if (not (isinstance(lijevi, str) and len(lijevi) == 1)):
-                raise ValueError("Nekompatibilni tipovi")
+                raise SemantičkaGreška("Nekompatibilni tipovi")
             else:
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
-                return vrijednosti[izraz.lijevaStrana.ime][1:-1]
+                return vrijednosti[izraz.lijevaStrana][1:-1]
 
         elif isinstance(lijevi, bool):
             if (not isinstance(desni, bool)):
-                raise ValueError("Nekompatibilni tipovi")
+                raise SemantičkaGreška("Nekompatibilni tipovi")
             else:
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
-                return bool(vrijednosti[izraz.lijevaStrana.ime])
+                return bool(vrijednosti[izraz.lijevaStrana])
 
         elif isinstance(lijevi, str):
             if (not isinstance(desni, str)):
-                raise ValueError("Nekompatibilni tipovi")
+                raise SemantičkaGreška("Nekompatibilni tipovi")
             else:
                 Assignment.pridruži(izraz.lijevaStrana, desni, izraz.operator, vrijednosti, False)
-                return vrijednosti[izraz.lijevaStrana.ime]
+                return vrijednosti[izraz.lijevaStrana]
         else:
-            raise ValueError("Ne znam assignati operande ovog tipa!")
+            raise SemantičkaGreška("Ne znam assignati operande ovog tipa!")
 
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
@@ -905,7 +852,7 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
             elif operator ** Tokeni.CRTAEQ:
                 lijevo_val = lijevo_val | desno
         else: 
-            raise ValueError("Ovaj tip ne podržava operator " + operator.sadržaj + ".")
+            raise SemantičkaGreška("Ovaj tip ne podržava operator " + operator.sadržaj + ".")
 
         vrijednosti[lijevo] = lijevo_val
 
@@ -920,7 +867,7 @@ class Comparison(AST('lijevaStrana desnaStrana operator')):
              isinstance(desni, str) and len(desni) == 1)):
         
             if (type(lijevi) != type(desni)):
-                raise ValueError("neispravno uspoređivanje")
+                raise SemantičkaGreška("neispravno uspoređivanje")
 
             if izraz.operator ** Tokeni.LESS: return lijevi < desni
             elif izraz.operator ** Tokeni.LESSEQ: return lijevi <= desni
@@ -928,7 +875,7 @@ class Comparison(AST('lijevaStrana desnaStrana operator')):
             elif izraz.operator ** Tokeni.GRTEQ: return lijevi >= desni
             else: assert not 'slučaj'
         else:
-            raise ValueError("neispravna usporedba")
+            raise SemantičkaGreška("neispravna usporedba")
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
         
@@ -940,7 +887,7 @@ class Equality(AST('lijevaStrana desnaStrana operator')):
         desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
         
         if (type(lijevi) != type(desni)):
-            raise ValueError("neispravno uspoređivanje")
+            raise SemantičkaGreška("neispravno uspoređivanje")
 
         if izraz.operator ** Tokeni.EQ: return lijevi == desni
         elif izraz.operator ** Tokeni.DISEQ: return lijevi != desni
@@ -957,7 +904,7 @@ class BinarnaOperacija(AST('lijevaStrana desnaStrana operacija')):
             desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
 
         except ValueError:
-            raise ValueError("neispravna binarna operacija")
+            raise SemantičkaGreška("neispravna binarna operacija")
         
         if izraz.operacija ** Tokeni.PLUS:
             rezultat = lijevi + desni
@@ -984,7 +931,7 @@ class BitwiseOperacija(AST('lijevaStrana desnaStrana operacija')):
             lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
             desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
         except ValueError:
-            raise ValueError("neispravna bitwise operacija")
+            raise SemantičkaGreška("neispravna bitwise operacija")
         
         if izraz.operacija ** Tokeni.BITAND:
             rezultat = lijevi & desni
@@ -1003,7 +950,7 @@ class LogičkaOperacija(AST('lijevaStrana desnaStrana operacija')):
         # prvo evaluiraj lijevu stranu, ovisno o njenoj vrijednosti evaluiraj desnu
         lijevi = izraz.lijevaStrana.vrijednost(imena, vrijednosti)
         if(not isinstance(lijevi, bool)):
-            raise ValueError("neispravna logička operacija")
+            raise SemantičkaGreška("neispravna logička operacija")
 
         if izraz.operacija ** Tokeni.LAND:
             if (lijevi is False): return False
@@ -1013,7 +960,7 @@ class LogičkaOperacija(AST('lijevaStrana desnaStrana operacija')):
             
         desni = izraz.desnaStrana.vrijednost(imena, vrijednosti)
         if(not isinstance(desni, bool)):
-            raise ValueError("neispravna logička operacija")
+            raise SemantičkaGreška("neispravna logička operacija")
         
         if izraz.operacija ** Tokeni.LAND:
             rezultat = bool(lijevi and desni)
@@ -1039,7 +986,7 @@ class Negacija(AST('iza')):
     def vrijednost(izraz, imena, vrijednosti):
         value = izraz.iza.vrijednost(imena, vrijednosti)
         if (not isinstance(value, bool)):
-            raise ValueError("unarna negacija se izvršava samo na boolu")
+            raise SemantičkaGreška("unarna negacija se izvršava samo na boolu")
         return not value
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
@@ -1050,7 +997,7 @@ class Tilda(AST('iza')):
     def vrijednost(izraz, imena, vrijednosti):
         value = izraz.iza.vrijednost(imena, vrijednosti)
         if (not isinstance(value, int)):
-            raise ValueError("bitwise unary complement se izvršava samo na intu")
+            raise SemantičkaGreška("bitwise unary complement se izvršava samo na intu")
         return ~value
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
@@ -1059,7 +1006,7 @@ class Minus(AST('iza')):
     def vrijednost(izraz, imena, vrijednosti):
         value = izraz.iza.vrijednost(imena, vrijednosti)
         if (not isinstance(value, int)):
-            raise ValueError("unarni minus se izvršava samo na intu")
+            raise SemantičkaGreška("unarni minus se izvršava samo na intu")
         return -value
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
@@ -1082,76 +1029,168 @@ class Dekrement(AST('broj')):
     def izvrši(izraz, imena, vrijednosti):
         izraz.vrijednost(imena, vrijednosti)
 
-class Konstrukcija(AST('objekt argumenti')):
-    """Konstrukcija objekta s argumentima za konstruktor"""
-    # zasad konstruktor podržava samo primitivne tipove
-    def vrijednost(izraz, imena, vrijednosti):
-        o = izraz.objekt.vrijednost()
-        a = izraz.argumenti
-        for argument in a:
-            o = argument.vrijednost()
-        return o
-        
-
+#Lista programa se leksira, parsira i interpretira
+#svaki program mora imati main funkciju, svaka funkcija ima svoj doseg
+#definirana je pomoćna print funkcija, može primiti više izraza (npr. print(a, b)),
+#a za svaki izraz ispiše njega i njegovu vrijednost
+#za provjeru vrijednosti se također može koristiti i assert
 if __name__ == '__main__':
-    #lista = list(Lekser("1 _nesto0 () ; * -> += <lib\"char  0x23 \n \t \v alo \' ' '\0'"))
-    #lista = list(Lekser("1 _nesto0 () ; * //-> += <lib\"char0x23 bla_b<<=bl\" ba"))
-    #ulaz = r'probaa "ha \n \"  \\ ha \v " nakon stringa '
-    #ulaz = r'0x23 NULL      '
-    # ulaz = r"""NULL; !true; ~5;  -5; int a = 2;  a(6); char c = 'a'; a('b'); 3 < 5; 
-    #         a >= 10; a == true; b != false;
-    #         a+5;
-    #         a & 4;
-    #         4&a;
-    #         5+a;
-    #         true && a;
-    #         a || false;
-    #         true ? true : false;
-    #         a == true ? a : false;"""
-    #
-    #
-    #     for( ; c < 5; ){
-    #     c = c + 1;
-    #     if (c == 6)
-    #         break;
-    # }
-
-
+    programi = []
    
-    ulaz = r"""
+    program = r"""
 
-bool isPrime(int n)
-{
-  if (n < 2) return false;
-  if (n == 2) return true;
-  if (n % 2 == 0) return false;
-  for (int factor = 3; factor <= n/factor; factor += 2) {
-    if (n % factor == 0)
-      return false;
-  }
-  return true;
-}
-    string poruka() {
-        return "poruka";
+    int piUsingIsPrime(int a); //Deklaracija funkcije
+
+    bool isPrime(int n) {
+    if (n < 2) return false;
+    if (n == 2) return true;
+    if (n % 2 == 0) return false;
+    for (int factor = 3; factor <= n/factor; factor += 2) {
+        if (n % factor == 0)
+        return false;
     }
+    return true;
+    }
+    /* Funkcija koja za broj n vraća broj prostih brojeva od 1 do n */
+    int piUsingIsPrime(int n) {
+    int primeCount = 0;
+    for (int i = 2; i <= n; i++)
+        if (isPrime(i) == true) //Poziv funkcije isPrime, deklarirane gore
+        primeCount++;
+    return primeCount;
+    }
+    //Funkcija vraća reverz broja
+    int reverseInt(int n) {
+        int reversedNumber = 0;
+        int remainder;
+        while(n != 0)
+        {
+            remainder = n%10;
+            reversedNumber = reversedNumber*10 + remainder;
+            n /= 10;
+        }
+        return reversedNumber;
+    }
+
     int main() {
            int a;
            int b;
            int c;
-           c = b = a;
            c += a += 8;
 
-        print("heeeej", c, isPrime(3));
+        assert(c == 8);
+        assert(reverseInt(257) == 752);
+        print(piUsingIsPrime(10));
        return 2;
     }
-
-
     """
-  
-    tokeni = list(Lekser(ulaz))
-    print(*tokeni)
-    program = C0Parser.parsiraj(tokeni)
-    print(program)
+    programi.append(program)
 
-    program.izvrši()
+    program = r"""
 
+    int x(bool a);
+
+    int x(bool aaa); //dozvoljena redeklaracija, nije bitno što su različita imena argumenata
+
+    int x(bool a) {}
+
+    int x(bool a) {} //greška, nije dozvoljena redefinicija
+
+    int main() {
+        return 0;
+    }
+    """
+    programi.append(program)
+
+    program = r"""
+    int main() {
+        int a;
+        {
+            int a = 0; //greška, redeklaracija varijable
+        }
+        return 0;
+    }
+    """
+    programi.append(program)
+
+    program = r"""
+    int main() {
+        int a;
+        {
+            int c;
+        }
+        c = 3; //greška, izvan dosega
+        return 0;
+    }
+    """
+    programi.append(program)
+
+    program = r"""
+    int main() {
+        int a;
+        for ( ; a < 4; a++) {   //dozvoljeno je izostaviti i prvi i treći argument
+            if (a == 3) break;
+            for(int b = 0; b < 3; ) {
+                if (b % 2 == 0) {
+                    b += 1;
+                }
+                else {
+                    print(a, b);
+                    b += 1;
+                }
+            }
+        }
+        return 0;
+    }
+    """
+    programi.append(program)
+
+    program = r"""
+    int main() {
+        int a; //svakoj je varijabli automatski dodijeljena defaultna vrijednost
+        int c;
+        while (a < 5) {
+            if (a % 2 == 0) {
+                c = ~c;
+            }
+            else c = c << a;
+            print(c);
+            a++;
+        }
+        //return 'c'; //greška
+    } //funkcija ne mora imati povratu vrijednost, bitno je da nije pogrešnog tipa
+    """
+    programi.append(program)
+
+    program = r""" 
+        int main() { //prioriteti operatora
+            //bool b = "b";  greška
+            bool a = true;
+            int c = a ? 2 : -1;
+            print(c);
+            int d = c == 2 ? 2 + 6*3 : 8;
+            print(d);
+
+            if (c == 2 && d == 20)
+                string f = "van dosega";
+
+            //print(f); //greška
+            string f;
+            if (c == 2 && d == 20)
+                print(f = "u dosegu");
+        }
+    """
+    programi.append(program)
+
+    for program in programi:
+        try:
+            print("IZVRŠAVANJE PROGRAMA")
+            tokeni = list(Lekser(program))
+            #print(*tokeni)
+            program = C0Parser.parsiraj(tokeni)
+            #print(program)
+            program.izvrši()
+            print("------------")
+        except Greška as ex:
+            print(ex)
+            print("------------")

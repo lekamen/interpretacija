@@ -944,7 +944,6 @@ class Assignment(AST('lijevaStrana desnaStrana operator')):
         
         if(isinstance(izraz.lijevaStrana, Dohvati)):
             nešto = izraz.lijevaStrana.odakle.vrijednost(imena, vrijednosti)
-            print(nešto)
 
         if (isinstance(lijevi, int)):
             if (not isinstance(desni, int)):

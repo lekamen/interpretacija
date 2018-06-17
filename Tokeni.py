@@ -1,30 +1,4 @@
 from pj import *
-import re
-
-# GRAMATIKA (puna)
-# decimalni     -> 0 | [1-9][0-9]*
-# separator     -> ( | ) | [ | ] | { | } | , | ;
-# unarni_op     -> ! | ~ | - | *
-# binarni_op    -> . | -> | * | / | % | + | - | << | >> |
-#                  < | <= | >= | > | == | != | & | ^ | | |
-#                  && | || | ? | :
-# op_priruz     -> = | += | -= | *= | /= | %= | <<= | >>=
-#               -> &= | ^= | |=
-# postfix_op    -> -- | ++
-# escape        -> \n | \t | \v | \b | \r | \f | \a |
-#                  \\ | \' | \"
-# identifier    -> [A-Za-z_][A-Za-z0-9_]*    
-# broj          -> decimalni | heksadekadski
-# heksadekadski -> 0[xX][0-9a-fA-F]+
-# nchar         -> (normalni znak osim ")
-# lchar         -> (normalni znak osim >)
-
-#sve iznad je u Tokenima, ispod je za lexer
-# library       -> <lchar*>
-# schar         -> nchar | escape
-# cchar         -> nchar | escape | " | \0
-# string        -> "schar*"
-# char          -> 'cchar'
 
 class BreakException(Exception): pass
 class ContinueException(Exception): pass
@@ -39,7 +13,7 @@ class Tokeni(enum.Enum):
     SEP = ';'
     #unarni operatori
     USKL, TILDA, MINUS, ZVJ = '!~-*'
-    #binarni operatori bez zvjezdice!!!
+    #binarni operatori
     TOCKA, STRELICA, SLASH, MOD, PLUS, LSHIFT, RSHIFT = '.', '->', '/', '%', '+', '<<', '>>'
     LESS, LESSEQ, GRTEQ, GRT, EQ, DISEQ, BITAND, BITEXCLOR, BITOR = '<', '<=', '>=', '>', '==', '!=', '&', '^', '|'
     LAND, LOR, CONDQ, CONDDOT = '&&', '||', '?', ':'

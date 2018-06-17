@@ -1,6 +1,14 @@
-IPDZ2 primjeri:
+from Parser import *
 
-program = r"""
+#Lista programa se leksira, parsira i interpretira
+#svaki program mora imati main funkciju, svaka funkcija ima svoj doseg
+#definirana je pomoćna print funkcija, može primiti više izraza (npr. print(a, b)),
+#a za svaki izraz ispiše njega i njegovu vrijednost
+#za provjeru vrijednosti se također može koristiti i assert
+if __name__ == '__main__':
+    programi = []
+
+    program = r"""
 
     int piUsingIsPrime(int a); //Deklaracija funkcije
 
@@ -42,6 +50,7 @@ program = r"""
            c += a += 8;
 
         assert(c == 8);
+        print(reverseInt(257));
         assert(reverseInt(257) == 752);
         print(piUsingIsPrime(10));
        return 2;
@@ -148,10 +157,27 @@ program = r"""
     program = r"""
         int main() {
             int[] a ;
-            int b =6;
+            int[] b;
             a = alloc_array(int, 7);
             a[0] = 6;
             a[5] += 3;
-            return b;
+            b = a;
+            b[4] = -7;
+            b[3]-=1;
+            print(a);
         }
     """
+    programi.append(program)
+
+    for program in programi:
+        try:
+            print("IZVRŠAVANJE PROGRAMA")
+            tokeni = list(Lekser(program))
+            #print(*tokeni)
+            program = C0Parser.parsiraj(tokeni)
+            #print(program)
+            program.izvrši()
+            print("------------")
+        except Greška as ex:
+            print(ex)
+            print("------------")

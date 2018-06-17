@@ -158,13 +158,16 @@ if __name__ == '__main__':
         int main() {
             int[] a ;
             int[] b;
+            int[] c = alloc_array(int, 9);
             a = alloc_array(int, 7);
             a[0] = 6;
             a[5] += 3;
             b = a;
             b[4] = -7;
             b[3]-=1;
+            c[8] = a[5] *= 4;
             print(a);
+            print(c);
         }
     """
     programi.append(program)

@@ -265,7 +265,7 @@ class Varijabla(AST('tip ime')):
             vrijednosti[izraz.ime] = [['N' + izraz.tip.sadržaj]]
         elif izraz.tip ** Tokeni.ARRAY:
             vrijednosti[izraz.ime] = [0, [izraz.tip.sadržaj]]
-        def vrijednost(izraz, iena, vrijednosti): 
+        def vrijednost(izraz, imena, vrijednosti): 
             return izraz
 
 class Deklaracija(AST('varijabla vrijedn')):
@@ -278,7 +278,7 @@ class Deklaracija(AST('varijabla vrijedn')):
 
         value = izraz.vrijedn.vrijednost(imena, vrijednosti)
 
-        if (isinstance(value, list)):
+        if (isinstance(value, list) and len(value) < 2):
             value = value[0]     
 
         if izraz.varijabla.tip ** Tokeni.POINTER:
@@ -303,14 +303,31 @@ class Deklaracija(AST('varijabla vrijedn')):
             value = [value]
 
         elif izraz.varijabla.tip ** Tokeni.ARRAY:
-            print("ovo!!!!")
-            print (izraz.varijabla.tip)
+            try:
+                if(len(value) < 2):
+                    raise GreškaIzvođenja("Neispravno polje")
+            except: raise GreškaIzvođenja("Neispravno polje")
+            # provjeri tip pointera
+            tip = izraz.varijabla.tip.sadržaj
+            if(tip == 'int[]'):
+                if(not isinstance(value[1][0], int)):
+                    raise GreškaIzvođenja("Nekompatibilan tip polja, očekujem " + tip)
+            elif(tip == 'char[]'):
+                if(not isinstance(value[1][0], str) or len(value)!=1):
+                    raise GreškaIzvođenja("Nekompatibilan tip polja, očekujem " + tip)
+            elif(tip == 'bool[]'):
+                if(not isinstance(value[1][0], bool)):
+                    raise GreškaIzvođenja("Nekompatibilan tip polja, očekujem " + tip)
+            elif(tip == 'string[]'):
+                if(not isinstance(value[1][0], str)):
+                    raise GreškaIzvođenja("Nekompatibilan tip polja, očekujem " + tip)
+            else: raise GreškaIzvođenja("Nepoznat tip polja")                
 
         elif (not isinstance(value, izraz.varijabla.tip.vrijednost(imena, vrijednosti))):
                 raise SemantičkaGreška("nekompatibilni tipovi")
-            
-        vrijednosti[izraz.varijabla.ime][0] = value
-
+        if(len(vrijednosti[izraz.varijabla.ime]) < 2):
+            vrijednosti[izraz.varijabla.ime][0] = value
+        else: vrijednosti[izraz.varijabla.ime] = value
 
 
 class Assignment(AST('lijevaStrana desnaStrana operator')):
